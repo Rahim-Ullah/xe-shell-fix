@@ -1,0 +1,15 @@
+# Ensure consistent line endings across platforms
+* text=auto
+
+# Force LF for shell scripts (must be LF on Linux/Mac target machines)
+*.sh text eol=lf
+*.zsh text eol=lf
+*.fish text eol=lf
+*.py text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+
+# Force CRLF for Windows-specific scripts
+*.ps1 text eol=crlf
+*.bat text eol=crlf
