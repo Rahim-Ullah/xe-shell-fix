@@ -1,0 +1,144 @@
+{
+  "git": {
+    "subcommands": ["status", "commit", "push", "pull", "checkout", "branch", "clone", "merge", "rebase", "stash", "log", "diff", "add", "reset", "fetch", "tag", "remote", "init", "show", "cherry-pick", "revert", "mv", "rm", "blame", "config", "worktree", "bisect", "reflog", "submodule", "describe", "gc", "fsck", "archive", "notes", "sparse-checkout", "restore", "switch", "difftool", "mergetool", "shortlog", "apply", "am", "clean", "format-patch"],
+    "safe_autorun": ["status", "log", "diff", "show", "branch", "remote", "fetch", "blame", "config", "reflog", "describe", "shortlog"]
+  },
+  "npm": {
+    "subcommands": ["install", "uninstall", "run", "start", "test", "build", "init", "list", "ls", "update", "publish", "link", "audit", "outdated", "view", "config", "ci"],
+    "safe_autorun": ["list", "ls", "outdated", "view", "audit"]
+  },
+  "npx": {
+    "subcommands": ["create-react-app", "create-next-app", "create-vite", "tsc", "eslint", "prettier"],
+    "safe_autorun": []
+  },
+  "yarn": {
+    "subcommands": ["install", "add", "remove", "run", "start", "build", "test", "upgrade", "init", "list"],
+    "safe_autorun": ["list"]
+  },
+  "pnpm": {
+    "subcommands": ["install", "add", "remove", "run", "start", "build", "test", "update", "init", "list"],
+    "safe_autorun": ["list"]
+  },
+  "node": {
+    "subcommands": ["--version", "-v", "--help", "-e"],
+    "safe_autorun": ["--version", "-v"]
+  },
+  "python": {
+    "subcommands": ["-m", "--version", "-c", "-i", "-u"],
+    "safe_autorun": ["--version"]
+  },
+  "python3": {
+    "subcommands": ["-m", "--version", "-c", "-i", "-u"],
+    "safe_autorun": ["--version"]
+  },
+  "py": {
+    "subcommands": ["-m", "--version", "-c", "-i", "-u"],
+    "safe_autorun": ["--version"]
+  },
+  "pip": {
+    "subcommands": ["install", "uninstall", "freeze", "list", "show", "search", "download", "wheel", "check", "config"],
+    "safe_autorun": ["list", "show", "freeze", "check"]
+  },
+  "pip3": {
+    "subcommands": ["install", "uninstall", "freeze", "list", "show", "download", "wheel", "check"],
+    "safe_autorun": ["list", "show", "freeze"]
+  },
+  "pytest": {
+    "subcommands": ["-v", "-k", "-x", "--collect-only", "--maxfail", "-q"],
+    "safe_autorun": ["--collect-only"]
+  },
+  "docker": {
+    "subcommands": ["run", "build", "ps", "images", "exec", "logs", "stop", "start", "rm", "rmi", "pull", "push", "compose", "network", "volume", "inspect", "tag", "kill", "restart", "attach", "top", "stats", "info", "version", "prune", "save", "load", "commit", "cp", "history"],
+    "safe_autorun": ["ps", "images", "logs", "inspect", "top", "stats", "info", "version", "history"]
+  },
+  "docker-compose": {
+    "subcommands": ["up", "down", "build", "logs", "ps", "exec", "restart"],
+    "safe_autorun": ["ps", "logs"]
+  },
+  "kubectl": {
+    "subcommands": ["get", "describe", "apply", "delete", "logs", "exec", "create", "rollout", "scale"],
+    "safe_autorun": ["get", "describe", "logs"]
+  },
+  "psql": {
+    "subcommands": ["-U", "-d", "-h", "-p", "-f", "-c"],
+    "safe_autorun": []
+  },
+  "mysql": {
+    "subcommands": ["-u", "-p", "-h", "-e", "-D"],
+    "safe_autorun": []
+  },
+  "mongosh": {
+    "subcommands": ["--eval", "--host", "--port"],
+    "safe_autorun": []
+  },
+  "redis-cli": {
+    "subcommands": ["ping", "get", "set", "keys", "flushall"],
+    "safe_autorun": ["ping", "get", "keys"]
+  },
+  "curl": {
+    "subcommands": ["-X", "-H", "-d", "-o", "-L", "-s", "-I"],
+    "safe_autorun": []
+  },
+  "code": {
+    "subcommands": [".", "--version", "--install-extension", "--diff"],
+    "safe_autorun": ["--version"]
+  },
+  "go": {
+    "subcommands": ["run", "build", "test", "get", "mod", "fmt", "vet", "install"],
+    "safe_autorun": ["test", "vet", "fmt"]
+  },
+  "cargo": {
+    "subcommands": ["build", "run", "test", "new", "add", "check", "fmt", "clippy"],
+    "safe_autorun": ["check", "test", "fmt"]
+  },
+  "java": {
+    "subcommands": ["-version", "-cp", "-jar"],
+    "safe_autorun": ["-version"]
+  },
+  "mvn": {
+    "subcommands": ["clean", "install", "package", "test", "compile", "verify"],
+    "safe_autorun": ["test"]
+  },
+  "gradle": {
+    "subcommands": ["build", "test", "run", "clean", "tasks"],
+    "safe_autorun": ["tasks", "test"]
+  },
+  "dotnet": {
+    "subcommands": ["run", "build", "test", "new", "restore", "publish", "watch"],
+    "safe_autorun": ["test"]
+  },
+  "composer": {
+    "subcommands": ["install", "require", "update", "dump-autoload", "test"],
+    "safe_autorun": []
+  },
+  "make": {
+    "subcommands": ["build", "clean", "test", "install", "all"],
+    "safe_autorun": []
+  },
+  "ssh": {
+    "subcommands": ["-i", "-p", "-L", "-R"],
+    "safe_autorun": []
+  },
+  "scp": {
+    "subcommands": ["-i", "-r", "-P"],
+    "safe_autorun": []
+  },
+  "tsc": {
+    "subcommands": ["--watch", "--noEmit", "--init"],
+    "safe_autorun": ["--noEmit"]
+  },
+  "_known_safe_commands": [
+    "cd", "ls", "dir", "cp", "copy", "mv", "move", "ren", "rename", "rm", "del", "erase",
+    "mkdir", "md", "rmdir", "rd", "pwd", "chdir", "cat", "type", "echo", "clear", "cls",
+    "history", "which", "where", "export", "set", "alias", "source", "chmod", "chown",
+    "touch", "grep", "findstr", "find", "sed", "awk", "kill", "ps", "tasklist", "taskkill",
+    "top", "df", "du", "wc", "sort", "uniq", "head", "tail", "diff", "vim", "vi", "nano",
+    "notepad", "less", "more", "tee", "xargs", "man", "help", "exit", "whoami", "hostname",
+    "ping", "tracert", "traceroute", "ipconfig", "ifconfig", "netstat", "tar", "zip",
+    "unzip", "gzip", "gunzip", "ln", "printf", "read", "test", "true", "false", "type",
+    "env", "date", "sleep", "uname", "id", "sudo", "stat", "file", "basename", "dirname",
+    "realpath", "readlink", "seq", "yes", "tr", "cut", "paste", "xcopy", "robocopy",
+    "attrib", "start", "call", "pause", "choice", "timeout", "ver", "vol", "fc", "comp",
+    "wmic", "systeminfo", "shutdown", "format", "diskpart"
+  ]
+}

@@ -1,0 +1,258 @@
+{
+  "_known_safe_commands": [
+    "cd", "cp", "mv", "rm", "ls", "ll", "la", "ps", "df", "du", "cat", "top", "kill",
+    "mkdir", "echo", "pwd", "grep", "sed", "awk", "find", "curl", "wget", "tar", "zip",
+    "unzip", "ssh", "scp", "diff", "head", "tail", "less", "more", "sort", "uniq", "wc",
+    "which", "where", "cls", "clear", "dir", "type", "true", "false", "exit",
+    "touch", "chmod", "chown", "ln", "file", "stat", "readlink", "basename", "dirname",
+    "realpath", "tee", "xargs", "tr", "cut", "paste", "column", "env", "export", "alias",
+    "history", "source", "exec", "nohup", "time", "watch", "yes", "seq", "shuf", "rev",
+    "bc", "cal", "date", "uptime", "free", "lsblk", "mount", "umount", "ping",
+    "traceroute", "netstat", "ifconfig", "ip", "dig", "nslookup", "host", "whois",
+    "telnet", "nc", "ss", "iptables", "htop", "tree", "jq", "bat", "rg", "fd", "fzf"
+  ],
+  "git": {
+    "subcommands": ["add", "am", "archive", "bisect", "branch", "bundle", "checkout", "cherry-pick", "citool", "clean", "clone", "commit", "config", "describe", "diff", "fetch", "format-patch", "gc", "grep", "gui", "init", "log", "merge", "mv", "notes", "pull", "push", "range-diff", "rebase", "remote", "reset", "restore", "revert", "rm", "shortlog", "show", "sparse-checkout", "stash", "status", "submodule", "switch", "tag", "worktree"],
+    "safe_autorun": ["status", "diff", "log", "branch", "remote", "show"]
+  },
+  "gh": {
+    "subcommands": ["auth", "browse", "codespace", "gist", "issue", "org", "pr", "project", "release", "repo", "run", "secret", "variable", "workflow", "config"],
+    "safe_autorun": ["status", "list", "view"]
+  },
+  "python": {
+    "subcommands": ["-m", "-c", "-v", "-V", "--version", "--help"],
+    "safe_autorun": ["--version", "-V"]
+  },
+  "python3": {
+    "subcommands": ["-m", "-c", "-v", "-V", "--version", "--help"],
+    "safe_autorun": ["--version", "-V"]
+  },
+  "pip": {
+    "subcommands": ["install", "download", "uninstall", "freeze", "inspect", "list", "show", "check", "config", "search", "wheel", "hash", "completion", "help", "cache"],
+    "safe_autorun": ["list", "show", "freeze", "check"]
+  },
+  "pip3": {
+    "subcommands": ["install", "download", "uninstall", "freeze", "inspect", "list", "show", "check", "config", "search", "wheel", "hash", "completion", "help", "cache"],
+    "safe_autorun": ["list", "show", "freeze", "check"]
+  },
+  "pipenv": {
+    "subcommands": ["check", "clean", "graph", "install", "lock", "open", "run", "scripts", "shell", "sync", "uninstall", "update", "verify"],
+    "safe_autorun": ["graph", "check"]
+  },
+  "poetry": {
+    "subcommands": ["about", "add", "build", "cache", "check", "config", "debug", "env", "export", "help", "init", "install", "lock", "new", "publish", "remove", "run", "search", "self", "shell", "show", "update", "version"],
+    "safe_autorun": ["show", "check", "version", "about"]
+  },
+  "uv": {
+    "subcommands": ["pip", "venv", "cache", "tool", "python", "run", "init", "add", "remove", "sync", "lock", "export", "tree"],
+    "safe_autorun": ["tree", "python"]
+  },
+  "conda": {
+    "subcommands": ["clean", "compare", "config", "create", "info", "init", "install", "list", "package", "remove", "rename", "run", "search", "uninstall", "update", "activate", "deactivate", "env"],
+    "safe_autorun": ["list", "info", "search"]
+  },
+  "npm": {
+    "subcommands": ["access", "adduser", "audit", "bugs", "cache", "ci", "completion", "config", "dedupe", "deprecate", "diff", "dist-tag", "docs", "doctor", "edit", "exec", "explain", "explore", "find-dupes", "fund", "help", "help-search", "hook", "init", "install", "install-ci-test", "install-test", "link", "ll", "login", "logout", "ls", "org", "outdated", "owner", "pack", "ping", "pkg", "prefix", "profile", "prune", "publish", "query", "rebuild", "repo", "restart", "root", "run", "run-script", "search", "set", "set-script", "shrinkwrap", "star", "stars", "start", "stop", "team", "test", "token", "uninstall", "unpublish", "unstar", "update", "version", "view", "whoami"],
+    "safe_autorun": ["list", "view", "outdated", "doctor"]
+  },
+  "pnpm": {
+    "subcommands": ["add", "i", "install", "update", "remove", "link", "unlink", "import", "rebuild", "prune", "fetch", "install-test", "patch", "patch-commit", "audit", "list", "outdated", "why", "root", "run", "test", "start", "dlx", "create", "deploy", "init"],
+    "safe_autorun": ["list", "outdated", "why"]
+  },
+  "yarn": {
+    "subcommands": ["add", "bin", "cache", "config", "create", "dedupe", "dlx", "explain", "info", "init", "install", "link", "node", "npm", "pack", "patch", "patch-commit", "rebuild", "remove", "run", "set", "stage", "unlink", "unplug", "up", "upgrade", "upgrade-interactive", "version", "why", "workspace", "workspaces"],
+    "safe_autorun": ["info", "why", "workspaces"]
+  },
+  "deno": {
+    "subcommands": ["bench", "bundle", "check", "compile", "coverage", "doc", "eval", "fmt", "help", "info", "init", "install", "jupyter", "lint", "publish", "repl", "run", "serve", "task", "test", "types", "uninstall", "upgrade", "add", "remove"],
+    "safe_autorun": ["info", "types", "check"]
+  },
+  "bun": {
+    "subcommands": ["run", "test", "build", "create", "init", "install", "add", "remove", "update", "link", "unlink", "pm", "upgrade", "outdated", "patch"],
+    "safe_autorun": ["pm", "outdated"]
+  },
+  "docker": {
+    "subcommands": ["attach", "build", "builder", "checkpoint", "commit", "compose", "config", "container", "context", "cp", "create", "diff", "events", "exec", "export", "history", "image", "images", "import", "info", "init", "inspect", "kill", "load", "login", "logout", "logs", "manifest", "network", "node", "pause", "plugin", "port", "ps", "pull", "push", "rename", "restart", "rm", "rmi", "run", "save", "search", "secret", "service", "stack", "start", "stats", "stop", "swarm", "system", "tag", "top", "trust", "unpause", "update", "version", "volume", "wait"],
+    "safe_autorun": ["ps", "images", "version", "info", "stats"]
+  },
+  "docker-compose": {
+    "subcommands": ["build", "config", "create", "down", "events", "exec", "images", "kill", "logs", "pause", "port", "ps", "pull", "push", "restart", "rm", "run", "scale", "start", "stop", "top", "unpause", "up", "version"],
+    "safe_autorun": ["ps", "images", "version", "config"]
+  },
+  "podman": {
+    "subcommands": ["attach", "build", "commit", "compose", "container", "cp", "create", "diff", "events", "exec", "export", "generate", "healthcheck", "history", "image", "images", "import", "info", "init", "inspect", "kill", "kube", "load", "login", "logout", "logs", "machine", "manifest", "mount", "network", "pause", "play", "pod", "port", "ps", "pull", "push", "rename", "restart", "rm", "rmi", "run", "save", "search", "secret", "start", "stats", "stop", "system", "tag", "top", "unmount", "unpause", "unshare", "untag", "update", "version", "volume", "wait"],
+    "safe_autorun": ["ps", "images", "version", "info", "stats"]
+  },
+  "kubectl": {
+    "subcommands": ["annotate", "api-resources", "api-versions", "apply", "attach", "auth", "autoscale", "certificate", "cluster-info", "completion", "config", "cordon", "cp", "create", "delete", "describe", "diff", "drain", "edit", "events", "exec", "explain", "expose", "get", "kustomize", "label", "logs", "options", "patch", "plugin", "port-forward", "proxy", "replace", "rollout", "run", "scale", "set", "taint", "top", "uncordon", "version", "wait"],
+    "safe_autorun": ["get", "describe", "version", "cluster-info", "top", "explain"]
+  },
+  "helm": {
+    "subcommands": ["create", "dependency", "env", "get", "help", "history", "install", "lint", "list", "package", "plugin", "pull", "push", "registry", "repo", "rollback", "search", "show", "status", "template", "test", "uninstall", "upgrade", "verify", "version"],
+    "safe_autorun": ["list", "search", "status", "version", "env"]
+  },
+  "cargo": {
+    "subcommands": ["add", "bench", "build", "check", "clean", "clippy", "config", "doc", "fetch", "fix", "fmt", "generate-lockfile", "help", "init", "install", "locate-project", "login", "metadata", "new", "owner", "package", "pkgid", "publish", "read-manifest", "remove", "report", "run", "rustc", "rustdoc", "search", "test", "tree", "uninstall", "update", "vendor", "verify-project", "version", "yank"],
+    "safe_autorun": ["check", "tree", "version", "metadata"]
+  },
+  "rustup": {
+    "subcommands": ["show", "update", "check", "default", "toolchain", "target", "component", "override", "run", "which", "doc", "man", "self", "set"],
+    "safe_autorun": ["show", "check"]
+  },
+  "go": {
+    "subcommands": ["bug", "build", "clean", "doc", "env", "fix", "fmt", "generate", "get", "install", "list", "mod", "work", "run", "telemetry", "test", "tool", "version", "vet"],
+    "safe_autorun": ["version", "env", "doc", "list"]
+  },
+  "terraform": {
+    "subcommands": ["apply", "destroy", "fmt", "get", "graph", "import", "init", "login", "logout", "metadata", "output", "plan", "providers", "refresh", "show", "state", "taint", "test", "untaint", "validate", "version", "workspace"],
+    "safe_autorun": ["version", "show", "output", "validate"]
+  },
+  "aws": {
+    "subcommands": ["s3", "s3api", "ec2", "iam", "lambda", "sts", "configure", "ecs", "ecr", "cloudformation", "dynamodb", "rds", "sqs", "sns", "route53", "logs", "secretsmanager"],
+    "safe_autorun": []
+  },
+  "gcloud": {
+    "subcommands": ["auth", "config", "projects", "compute", "container", "storage", "services", "run", "functions", "sql", "pubsub", "iam", "secrets"],
+    "safe_autorun": ["config", "info"]
+  },
+  "az": {
+    "subcommands": ["login", "account", "group", "vm", "storage", "aks", "webapp", "appservice", "keyvault", "network", "monitor", "ad", "configure"],
+    "safe_autorun": ["account", "version"]
+  },
+  "systemctl": {
+    "subcommands": ["start", "stop", "reload", "restart", "try-restart", "reload-or-restart", "isolate", "kill", "is-active", "is-failed", "status", "show", "reset-failed", "list-units", "list-sockets", "list-timers", "enable", "disable", "reenable", "preset", "mask", "unmask", "link", "load", "daemon-reload"],
+    "safe_autorun": ["status", "is-active", "is-failed", "list-units"]
+  },
+  "journalctl": {
+    "subcommands": ["--unit", "-u", "-f", "--follow", "-e", "-b", "--boot", "-n", "--lines", "-r", "--reverse", "-k", "--dmesg"],
+    "safe_autorun": ["-n", "-u", "-e", "-r"]
+  },
+  "service": {
+    "subcommands": ["start", "stop", "restart", "status", "reload", "force-reload"],
+    "safe_autorun": ["status"]
+  },
+  "make": {
+    "subcommands": ["all", "clean", "build", "test", "check", "install", "run", "distclean"],
+    "safe_autorun": []
+  },
+  "cmake": {
+    "subcommands": ["--build", "-B", "-S", "--install", "--clean-first", "--version"],
+    "safe_autorun": ["--version"]
+  },
+  "composer": {
+    "subcommands": ["about", "archive", "audit", "browse", "check-platform-reqs", "clear-cache", "config", "create-project", "depends", "diagnose", "dump-autoload", "exec", "fund", "global", "help", "home", "info", "init", "install", "licenses", "list", "outdated", "prohibits", "reinstall", "remove", "require", "run-script", "search", "self-update", "show", "status", "suggests", "update", "validate", "why", "why-not"],
+    "safe_autorun": ["diagnose", "show", "outdated", "validate", "why"]
+  },
+  "dotnet": {
+    "subcommands": ["build", "clean", "format", "migrate", "msbuild", "new", "nuget", "pack", "publish", "restore", "run", "sln", "test", "tool", "vstest", "add", "list", "remove"],
+    "safe_autorun": ["list", "--version"]
+  },
+  "mvn": {
+    "subcommands": ["clean", "validate", "compile", "test", "package", "verify", "install", "deploy", "site"],
+    "safe_autorun": []
+  },
+  "gradle": {
+    "subcommands": ["build", "clean", "test", "check", "assemble", "run", "tasks", "projects", "dependencies", "help"],
+    "safe_autorun": ["tasks", "projects", "dependencies", "help"]
+  },
+  "ruby": {
+    "subcommands": ["-v", "-e", "-r", "-c", "--version"],
+    "safe_autorun": ["-v", "--version"]
+  },
+  "gem": {
+    "subcommands": ["build", "cert", "check", "cleanup", "contents", "dependency", "environment", "fetch", "generate_index", "help", "info", "install", "list", "lock", "mirror", "open", "outdated", "owner", "pristine", "push", "query", "rdoc", "search", "server", "setup", "signin", "signout", "sources", "specification", "stale", "uninstall", "unpack", "update", "which", "yank"],
+    "safe_autorun": ["list", "info", "environment", "outdated"]
+  },
+  "bundle": {
+    "subcommands": ["add", "binstubs", "cache", "check", "clean", "config", "doctor", "exec", "fund", "help", "info", "init", "inject", "install", "issue", "list", "lock", "open", "outdated", "platform", "plugin", "pristine", "remove", "show", "update", "version", "viz"],
+    "safe_autorun": ["check", "doctor", "info", "list", "outdated", "platform", "version"]
+  },
+  "code": {
+    "subcommands": ["--install-extension", "--uninstall-extension", "--list-extensions", "--diff", "--goto", "--new-window", "--reuse-window", "--version"],
+    "safe_autorun": ["--list-extensions", "--version"]
+  },
+  "nvim": {
+    "subcommands": [],
+    "safe_autorun": []
+  },
+  "neovim": {
+    "subcommands": [],
+    "safe_autorun": []
+  },
+  "tmux": {
+    "subcommands": ["new-session", "attach-session", "list-sessions", "kill-session", "split-window", "new-window", "select-pane", "resize-pane", "detach"],
+    "safe_autorun": ["list-sessions"]
+  },
+  "screen": {
+    "subcommands": ["list", "attach", "detach", "wipe"],
+    "safe_autorun": ["list"]
+  },
+  "htop": {
+    "subcommands": [],
+    "safe_autorun": []
+  },
+  "tree": {
+    "subcommands": [],
+    "safe_autorun": []
+  },
+  "jq": {
+    "subcommands": [],
+    "safe_autorun": []
+  },
+  "bat": {
+    "subcommands": [],
+    "safe_autorun": []
+  },
+  "rg": {
+    "subcommands": [],
+    "safe_autorun": []
+  },
+  "fd": {
+    "subcommands": [],
+    "safe_autorun": []
+  },
+  "fzf": {
+    "subcommands": [],
+    "safe_autorun": []
+  },
+  "ansible": {
+    "subcommands": ["all", "--list-hosts", "--list-tasks", "--syntax-check"],
+    "safe_autorun": ["--list-hosts", "--list-tasks", "--syntax-check"]
+  },
+  "ansible-playbook": {
+    "subcommands": ["--syntax-check", "--check", "--diff", "--list-hosts", "--list-tasks"],
+    "safe_autorun": ["--syntax-check", "--list-hosts", "--list-tasks"]
+  },
+  "vagrant": {
+    "subcommands": ["up", "halt", "destroy", "ssh", "status", "provision", "reload", "suspend", "resume", "snapshot", "box", "init", "global-status"],
+    "safe_autorun": ["status", "global-status"]
+  },
+  "vercel": {
+    "subcommands": ["deploy", "dev", "build", "login", "logout", "pull", "env", "link", "inspect", "domains", "logs", "project"],
+    "safe_autorun": ["env", "inspect", "domains", "logs", "project"]
+  },
+  "netlify": {
+    "subcommands": ["deploy", "dev", "build", "login", "init", "link", "status", "sites", "open", "env"],
+    "safe_autorun": ["status", "sites", "env"]
+  },
+  "fly": {
+    "subcommands": ["launch", "deploy", "status", "logs", "ssh", "scale", "secrets", "apps", "machine", "proxy"],
+    "safe_autorun": ["status", "logs", "apps"]
+  },
+  "wrangler": {
+    "subcommands": ["dev", "deploy", "publish", "login", "init", "generate", "secret", "tail", "pages"],
+    "safe_autorun": ["tail"]
+  },
+  "supabase": {
+    "subcommands": ["init", "start", "stop", "status", "db", "functions", "migration", "gen", "login", "link"],
+    "safe_autorun": ["status"]
+  },
+  "prisma": {
+    "subcommands": ["init", "generate", "db", "migrate", "studio", "format", "validate"],
+    "safe_autorun": ["validate"]
+  },
+  "turbo": {
+    "subcommands": ["run", "prune", "link", "login", "logout", "daemon"],
+    "safe_autorun": []
+  }
+}

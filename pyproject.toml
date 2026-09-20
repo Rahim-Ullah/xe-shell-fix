@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xe-shell-fix"
+version = "1.0.0"
+description = "Universal, resilient shell command auto-repair assistant for PowerShell, Git Bash, Bash, Zsh, and Fish."
+readme = "README.md"
+authors = [
+    { name = "xe-shell-fix team" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = ["terminal", "shell", "bash", "zsh", "powershell", "fish", "cli", "ai", "gemini", "thefuck"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Shells",
+    "Topic :: Utilities",
+]
+dependencies = [
+    # Zero external dependencies for standard base install!
+]
+
+[project.optional-dependencies]
+all = []
+dev = [
+    "pytest>=7.0.0",
+]
+
+[project.scripts]
+xsf = "xsf.cli:cli_entry"
+xefix = "xsf.cli:cli_entry"
+xeeee = "xsf.cli:cli_entry"
+fuxx = "xsf.cli:cli_entry"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["xsf*"]
+
+[tool.setuptools.package-data]
+xsf = [
+    "offline/*.json",
+    "hooks/*.ps1",
+    "hooks/*.sh",
+    "hooks/*.zsh",
+    "hooks/*.fish",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+

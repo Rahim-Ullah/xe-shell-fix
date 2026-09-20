@@ -1,0 +1,14 @@
+# Copy this file to ~/.shellfix/config.toml and fill in your key, OR just
+# set the GEMINI_API_KEY environment variable instead (the env var wins if
+# both are set, and needs no TOML parsing, so it also works on Python <3.11).
+#
+# Get a free Gemini key (no credit card) at:
+#   https://aistudio.google.com/apikey
+#
+# Free-tier model rows change fairly often - if requests start failing with
+# a 404, check the current list at https://ai.google.dev/gemini-api/docs/pricing
+# and update `model` below.
+
+provider = "gemini"
+model = "gemini-2.5-flash"
+api_key = "AIza...your-key-here"
