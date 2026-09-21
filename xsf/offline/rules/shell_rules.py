@@ -198,9 +198,16 @@ COMMON_SHELL_TYPOS = {
     "supabse": "supabase", "supabae": "supabase", "subabase": "supabase",
     "redis-cl": "redis-cli", "redsi-cli": "redis-cli", "redic-cli": "redis-cli",
     "psq": "psql", "pqsl": "psql", "pslq": "psql",
-    "myql": "mysql", "msyql": "mysql", "myslq": "mysql",
-    "monogsh": "mongosh", "mongsoh": "mongosh", "mongsh": "mongosh",
     "sqlit3": "sqlite3", "sqllite3": "sqlite3", "sqlie3": "sqlite3",
+    # Additional common slips
+    "got": "git", "gitr": "git", "giit": "git",
+    "puthon": "python", "pyhon": "python",
+    "chmox": "chmod", "chomod": "chmod",
+    "curk": "curl", "curll": "curl",
+    "kubcetl": "kubectl", "kubect": "kubectl", "kuberctl": "kubectl",
+    "claud": "claude", "cloude": "claude",
+    "aiedr": "aider", "aier": "aider",
+    "dtb": "dbt", "dukcdb": "duckdb",
 }
 
 

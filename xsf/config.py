@@ -19,16 +19,16 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         # Default fast cloud cascade (Groq first — fastest LPU inference):
         "cascade": ["groq", "cerebras", "gemini", "openrouter"],
         "groq_api_key": "",
-        "groq_model": "llama-3.1-8b-instant",     # Fastest Groq model, best free limits
+        "groq_model": "qwen/qwen3.8-27b",          # High-speed active model on Groq LPU
         "cerebras_api_key": "",
         "cerebras_model": "qwen-3.8-27b",
         "gemini_api_key": "",
-        "gemini_model": "gemini-2.0-flash-lite",   # Current free-tier Gemini model
+        "gemini_model": "gemini-flash-latest",     # Canonical flash alias (always active, resilient)
         "openrouter_api_key": "",
         "openrouter_model": "meta-llama/llama-3.3-70b-instruct:free",
         # Opt-in paid / private providers (not in default cascade):
         "grok_api_key": "",
-        "grok_model": "grok-beta",
+        "grok_model": "grok-2-latest",
         "openai_api_key": "",
         "openai_model": "gpt-4o-mini",
         "openai_base_url": "",

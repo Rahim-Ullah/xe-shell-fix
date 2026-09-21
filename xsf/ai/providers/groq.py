@@ -2,7 +2,7 @@
 xsf.ai.providers.groq - Ultra-fast Groq LPU Inference Provider.
 
 Groq offers industry-leading token generation speed (~200ms latency).
-Free tier: 30 RPM, 14,400 RPD on most models.
+Free tier: 30 RPM, 14,400 RPD on standard models.
 """
 import json
 from typing import Tuple
@@ -12,21 +12,21 @@ import urllib.request
 from xsf.core.command import Command
 from xsf.ai.providers.base import BaseProvider, ProviderError, SYSTEM_PROMPT
 
-# Ordered list of Groq models to try: fastest/cheapest first
+# Ordered list of active Groq models: proven accessible first
 _GROQ_MODELS = [
-    "llama-3.1-8b-instant",      # Fastest, very generous free limits
-    "llama3-8b-8192",             # Reliable fallback
-    "qwen/qwen3.8-27b",           # Good reasoning for complex errors
-    "llama-3.3-70b-versatile",    # Most capable, slower
+    "qwen/qwen3.8-27b",           # Active, extremely fast, excellent code reasoning
+    "llama3-8b-8192",             # High availability fallback
+    "llama-3.1-8b-instant",      # Fast fallback
+    "llama-3.3-70b-versatile",    # High parameter reasoning fallback
 ]
 
 
 class GroqProvider(BaseProvider):
     name = "groq"
 
-    def __init__(self, api_key: str = "", model: str = "llama-3.1-8b-instant"):
+    def __init__(self, api_key: str = "", model: str = "qwen/qwen3.8-27b"):
         self.api_key = api_key
-        self.model = model
+        self.model = model or "qwen/qwen3.8-27b"
 
     def is_configured(self) -> bool:
         return bool(self.api_key and self.api_key.strip())
@@ -48,12 +48,11 @@ class GroqProvider(BaseProvider):
                 {"role": "user", "content": user_content},
             ],
             "temperature": 0.0,
-            "max_tokens": 512,          # Raised from 200 — was causing truncated JSON
+            "max_tokens": 512,          # High enough to guarantee full JSON completion
             "response_format": {"type": "json_object"},
-            "stop": None,               # Let the model finish naturally
         }
 
-        # Try primary model, fall back on model-not-found or rate limit
+        # Try primary model, fall back on model-not-found, 429, or 503
         models_to_try = [self.model] + [m for m in _GROQ_MODELS if m != self.model]
 
         last_error: Exception = ProviderError("No Groq models available")
@@ -81,12 +80,6 @@ class GroqProvider(BaseProvider):
                 except (KeyError, IndexError):
                     raise ProviderError("Groq response missing choices content")
 
-                # Warn if finish_reason indicates truncation
-                finish_reason = data["choices"][0].get("finish_reason", "stop")
-                if finish_reason == "length":
-                    # JSON was likely truncated — attempt parse anyway (brace matching)
-                    pass
-
                 fixed_cmd, explanation, confidence, destructive = self.parse_json_response(raw_text)
                 if destructive:
                     confidence = min(confidence, 0.4)
@@ -94,11 +87,11 @@ class GroqProvider(BaseProvider):
 
             except urllib.error.HTTPError as e:
                 detail = e.read().decode("utf-8", errors="ignore")[:300]
-                if e.code == 429:
-                    # Rate limited — try next model (different quotas)
-                    last_error = ProviderError(f"Groq rate limit on '{model}', trying next", e.code)
+                if e.code in (429, 500, 502, 503, 504):
+                    # Rate limit or server error — try next model
+                    last_error = ProviderError(f"Groq error ({e.code}) on '{model}', trying next", e.code)
                     continue
-                elif e.code == 404 or (e.code == 400 and "model" in detail.lower()):
+                elif e.code == 404 or (e.code == 400 and ("model" in detail.lower() or "not found" in detail.lower())):
                     last_error = ProviderError(f"Groq model '{model}' unavailable, trying next", e.code)
                     continue
                 elif e.code in (401, 403):

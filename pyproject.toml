@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xe-shell-fix"
-version = "1.0.0"
+version = "1.1.0"
 description = "Universal, resilient shell command auto-repair assistant for PowerShell, Git Bash, Bash, Zsh, and Fish."
 readme = "README.md"
 authors = [

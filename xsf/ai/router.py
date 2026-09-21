@@ -41,7 +41,7 @@ class AIRouter:
         # Groq (Ultra-fast LPU — FIRST in cascade, highest priority)
         self.providers["groq"] = GroqProvider(
             api_key=self.ai_cfg.get("groq_api_key", ""),
-            model=self.ai_cfg.get("groq_model", "llama-3.1-8b-instant"),
+            model=self.ai_cfg.get("groq_model", "qwen/qwen3.8-27b"),
         )
         # Cerebras (Wafer-scale, very fast)
         self.providers["cerebras"] = CerebrasProvider(
@@ -51,7 +51,7 @@ class AIRouter:
         # Gemini (Free, generous quota)
         self.providers["gemini"] = GeminiProvider(
             api_key=self.ai_cfg.get("gemini_api_key", ""),
-            model=self.ai_cfg.get("gemini_model", "gemini-2.0-flash-lite"),
+            model=self.ai_cfg.get("gemini_model", "gemini-flash-latest"),
         )
         # OpenRouter (Free-tier fallback)
         self.providers["openrouter"] = OpenRouterProvider(
@@ -61,7 +61,7 @@ class AIRouter:
         # Grok (xAI, opt-in)
         self.providers["grok"] = GrokProvider(
             api_key=self.ai_cfg.get("grok_api_key", ""),
-            model=self.ai_cfg.get("grok_model", "grok-beta"),
+            model=self.ai_cfg.get("grok_model", "grok-2-latest"),
         )
         # OpenAI-compat (opt-in, supports custom base_url for DeepSeek, Mistral, etc.)
         self.providers["openai"] = OpenAICompatProvider(

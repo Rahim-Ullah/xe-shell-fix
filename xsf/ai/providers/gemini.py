@@ -1,7 +1,7 @@
 """
 xsf.ai.providers.gemini - Google Gemini Free Tier Provider (zero external dependencies).
 
-Free tier rates (gemini-2.0-flash-lite):
+Free tier rates:
   - 30 RPM, 1500 RPD, 1,000,000 TPM
 """
 import json
@@ -14,18 +14,19 @@ from xsf.ai.providers.base import BaseProvider, ProviderError, SYSTEM_PROMPT
 
 # Current stable free-tier models, ordered best→fallback
 _FALLBACK_MODELS = [
-    "gemini-2.0-flash-lite",  # Fastest, most generous free quota
-    "gemini-2.0-flash",        # Slightly more capable
-    "gemini-1.5-flash",        # Proven stable fallback
+    "gemini-flash-latest",      # Canonical latest flash alias (always active)
+    "gemini-3.6-flash",         # Modern generation flash
+    "gemini-flash-lite-latest", # Ultra-fast low-latency tier
+    "gemini-3.5-flash-lite",    # Stable fallback lite
 ]
 
 
 class GeminiProvider(BaseProvider):
     name = "gemini"
 
-    def __init__(self, api_key: str = "", model: str = "gemini-2.0-flash-lite"):
+    def __init__(self, api_key: str = "", model: str = "gemini-flash-latest"):
         self.api_key = api_key
-        self.model = model
+        self.model = model or "gemini-flash-latest"
 
     def is_configured(self) -> bool:
         return bool(self.api_key and self.api_key.strip())
@@ -45,12 +46,12 @@ class GeminiProvider(BaseProvider):
             "contents": [{"role": "user", "parts": [{"text": user_content}]}],
             "generationConfig": {
                 "temperature": 0.0,
-                "maxOutputTokens": 512,       # Enough for JSON + explanation
+                "maxOutputTokens": 512,       # Generous room for full JSON output
                 "responseMimeType": "application/json",
             },
         }
 
-        # Try primary model, then automatic fallbacks on 404
+        # Try primary model, then automatic fallbacks on 404, 503, 429
         models_to_try = [self.model] + [m for m in _FALLBACK_MODELS if m != self.model]
 
         last_error: Exception = ProviderError("No Gemini models available")
@@ -75,14 +76,14 @@ class GeminiProvider(BaseProvider):
                 try:
                     raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
                 except (KeyError, IndexError):
-                    # Check for safety block or empty response
                     finish_reason = (
                         data.get("candidates", [{}])[0]
                         .get("finishReason", "UNKNOWN")
                     )
-                    raise ProviderError(
-                        f"Gemini response empty (finishReason={finish_reason})"
+                    last_error = ProviderError(
+                        f"Gemini response empty on '{model}' (finishReason={finish_reason})"
                     )
+                    continue
 
                 fixed_cmd, explanation, confidence, destructive = self.parse_json_response(raw_text)
                 if destructive:
@@ -91,11 +92,10 @@ class GeminiProvider(BaseProvider):
 
             except urllib.error.HTTPError as e:
                 detail = e.read().decode("utf-8", errors="ignore")[:300]
-                if e.code == 404:
-                    last_error = ProviderError(f"Gemini model '{model}' not found, trying fallback", e.code)
-                    continue  # Try next model
-                elif e.code == 429:
-                    raise ProviderError(f"Gemini rate limit hit (429). Try again shortly.", e.code)
+                # 404 = Model retired/not found, 503 = Temporary capacity spike, 429 = Per-model quota limit
+                if e.code in (404, 503, 429, 500, 502, 504):
+                    last_error = ProviderError(f"Gemini model '{model}' unavailable ({e.code}), trying fallback", e.code)
+                    continue  # Try next model in fallback list
                 elif e.code in (401, 403):
                     raise ProviderError(f"Gemini API key invalid or unauthorized ({e.code})", e.code)
                 else:

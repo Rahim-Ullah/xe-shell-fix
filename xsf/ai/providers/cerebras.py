@@ -35,7 +35,7 @@ class CerebrasProvider(BaseProvider):
                 {"role": "user", "content": user_content}
             ],
             "temperature": 0.0,
-            "max_tokens": 200,
+            "max_tokens": 512,
             "response_format": {"type": "json_object"},
         }
 
@@ -46,7 +46,7 @@ class CerebrasProvider(BaseProvider):
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.api_key.strip()}",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 xsf/1.0",
+                "User-Agent": "xsf/1.0 (xe-shell-fix)",
             },
             method="POST",
         )

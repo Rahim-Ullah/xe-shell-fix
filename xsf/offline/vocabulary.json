@@ -611,5 +611,60 @@
     "aliases": [],
     "subcommands": ["http", "tcp", "tunnel", "start", "config", "credits", "diagnose", "service", "version", "update", "api"],
     "safe_autorun": ["version", "credits", "diagnose"]
+  },
+  "claude": {
+    "aliases": [],
+    "subcommands": ["config", "update", "auth", "login", "logout", "doctor", "version"],
+    "safe_autorun": ["version", "doctor"]
+  },
+  "aider": {
+    "aliases": [],
+    "subcommands": ["--model", "--watch", "--commit", "--version", "--help", "--lint", "--test"],
+    "safe_autorun": ["--version", "--help"]
+  },
+  "vllm": {
+    "aliases": [],
+    "subcommands": ["serve", "version", "--help"],
+    "safe_autorun": ["version", "--help"]
+  },
+  "huggingface-cli": {
+    "aliases": ["hf"],
+    "subcommands": ["login", "whoami", "logout", "upload", "download", "env", "scan-cache", "delete-cache", "version"],
+    "safe_autorun": ["whoami", "env", "version"]
+  },
+  "dbt": {
+    "aliases": [],
+    "subcommands": ["run", "test", "build", "compile", "docs", "init", "deps", "seed", "snapshot", "clean", "debug", "version"],
+    "safe_autorun": ["debug", "version", "docs generate"]
+  },
+  "duckdb": {
+    "aliases": [],
+    "subcommands": ["-c", "-s", "--version", "--help", "-json", "-csv"],
+    "safe_autorun": ["--version"]
+  },
+  "k3d": {
+    "aliases": [],
+    "subcommands": ["cluster", "node", "image", "registry", "kubeconfig", "version"],
+    "safe_autorun": ["cluster list", "version"]
+  },
+  "act": {
+    "aliases": [],
+    "subcommands": ["--list", "-l", "-j", "-W", "-s", "--version", "--help"],
+    "safe_autorun": ["--list", "-l", "--version"]
+  },
+  "cloudflared": {
+    "aliases": [],
+    "subcommands": ["tunnel", "update", "version", "proxy-dns", "access"],
+    "safe_autorun": ["version", "tunnel list"]
+  },
+  "alembic": {
+    "aliases": [],
+    "subcommands": ["init", "revision", "upgrade", "downgrade", "current", "history", "heads", "branches", "merge", "show", "check"],
+    "safe_autorun": ["current", "history", "heads", "branches", "show", "check"]
+  },
+  "drizzle-kit": {
+    "aliases": ["drizzle"],
+    "subcommands": ["generate", "migrate", "push", "pull", "check", "up", "drop", "studio"],
+    "safe_autorun": ["check", "studio"]
   }
 }

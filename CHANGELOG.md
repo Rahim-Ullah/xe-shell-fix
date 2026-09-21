@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-09-22
+
+### 🚀 Resilience & Vocabulary Supercharge
+
+#### Added & Improved
+- **Multi-Model Resilient AI Cascades**:
+  - **Gemini**: Added automatic model fallback across `gemini-flash-latest`, `gemini-3.6-flash`, `gemini-flash-lite-latest` on 503 high-demand spikes and 404 retired models.
+  - **Groq**: Configured `qwen/qwen3.8-27b` as high-throughput primary with seamless fallback across `llama3-8b-8192` and `llama-3.1-8b-instant`.
+  - **xAI Grok & Cerebras**: Standardized `max_tokens: 512` and structured JSON response formats to prevent truncated JSON parsing errors.
+- **Enhanced Offline Heuristics & Vocabulary**:
+  - **Tool Aliases**: Direct translation for shorthand aliases (`k` → `kubectl`, `tf` → `terraform`, `g` → `git`).
+  - **Compound Command Awareness**: Multi-depth subcommand matching for compound tools (e.g. `docker compose bulid` → `docker compose build`).
+  - **Leading Flag-Skipping**: Intelligent subcommand detection past global flags (e.g. `git -C /path statsu` → `git -C /path status`).
+  - **Flag Auto-Healing**: Corrects single-dash slips on standard long options (`python -version` → `python --version`, `docker -help` → `docker --help`).
+  - **10+ Modern Toolchains Added**: `claude`, `aider`, `vllm`, `huggingface-cli`, `dbt`, `duckdb`, `k3d`, `act`, `cloudflared`, `alembic`, `drizzle-kit`.
+- **Test Suite**: Expanded to 100 passing unit tests (100% pass rate).
+
+---
+
 ## [1.0.0] - 2026-09-20
 
 ### 🎉 Initial Production Release

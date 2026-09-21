@@ -35,6 +35,7 @@ class OpenRouterProvider(BaseProvider):
                 {"role": "user", "content": user_content}
             ],
             "temperature": 0.0,
+            "max_tokens": 512,
             "response_format": {"type": "json_object"},
         }
 

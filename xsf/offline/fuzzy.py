@@ -2,9 +2,11 @@
 xsf.offline.fuzzy - Levenshtein and sequence matcher for typo correction.
 
 Handles:
-  - Program name typos  (e.g. doker → docker)
-  - Known tool aliases  (e.g. gcloud → gcloud, k → kubectl)
-  - Subcommand typos    (e.g. git statsu → git status)
+  - Program name typos (e.g. doker → docker)
+  - Known tool aliases (e.g. k → kubectl, tf → terraform, g → git)
+  - Subcommand typos with flag-skipping (e.g. git statsu → git status, git -C /path statsu → git -C /path status)
+  - Compound tool subcommands (e.g. docker compose bulid → docker compose build)
+  - Common flag dash typos (e.g. python -version → python --version, docker -help → docker --help)
 """
 import difflib
 import json
@@ -32,10 +34,26 @@ for _tool, _data in VOCAB.items():
 
 ALL_TARGET_PROGRAMS = sorted(list(TOOL_NAMES | KNOWN_SAFE_COMMANDS | set(_ALIAS_TO_CANONICAL.keys())))
 
+# Common flag dash slips: words that are almost universally double-dash long options
+_COMMON_LONG_FLAGS = {
+    "-version": "--version",
+    "-help": "--help",
+    "-verbose": "--verbose",
+    "-force": "--force",
+    "-all": "--all",
+    "-output": "--output",
+    "-config": "--config",
+    "-dry-run": "--dry-run",
+    "-recursive": "--recursive",
+}
+
+# Flags that take an argument, so the next token is a value, not a subcommand
+_FLAGS_WITH_ARGS = {"-c", "-C", "-m", "-f", "-o", "-p", "-u", "-e", "-i", "--config", "--file", "--work-tree"}
+
 
 def fuzzy_match_command(cmd: Command) -> Optional[Tuple[str, float, str]]:
     """
-    Corrects tool name and/or subcommand typos using vocabulary + alias resolution.
+    Corrects tool name, subcommands, and flags using vocabulary + alias resolution.
     Returns: (fixed_command_string, confidence, explanation) or None.
     """
     tokens = cmd.tokens
@@ -49,7 +67,7 @@ def fuzzy_match_command(cmd: Command) -> Optional[Tuple[str, float, str]]:
     confidence = 1.0
     notes = []
 
-    # 1. Resolve alias first (e.g. k → kubectl, tf → terraform)
+    # 1. Resolve alias first (e.g. k → kubectl, tf → terraform, g → git)
     if prog_key in _ALIAS_TO_CANONICAL and prog_key not in TOOL_NAMES:
         canonical = _ALIAS_TO_CANONICAL[prog_key]
         fixed[0] = canonical
@@ -58,7 +76,7 @@ def fuzzy_match_command(cmd: Command) -> Optional[Tuple[str, float, str]]:
         confidence = 0.95
         notes.append(f"alias '{prog}' → '{canonical}'")
 
-    # 2. Correct program name if still unrecognized
+    # 2. Correct program name if still unrecognized and not a known safe command
     elif prog_key not in TOOL_NAMES and prog_key not in KNOWN_SAFE_COMMANDS:
         match = difflib.get_close_matches(prog_key, ALL_TARGET_PROGRAMS, n=1, cutoff=0.62)
         if match:
@@ -68,10 +86,31 @@ def fuzzy_match_command(cmd: Command) -> Optional[Tuple[str, float, str]]:
             confidence = difflib.SequenceMatcher(None, prog.lower(), match[0]).ratio()
             notes.append(f"'{prog}' → '{match[0]}'")
 
-    # 3. If program is known, correct subcommand typo
-    if prog_key in VOCAB and len(tokens) > 1:
-        subs = VOCAB[prog_key].get("subcommands", [])
-        sub = tokens[1]
+    # 3. Compound command detection: e.g. "docker compose" -> subcommands in "docker-compose"
+    active_vocab_key = prog_key
+    subcommand_idx = -1
+
+    if len(tokens) > 2 and f"{prog_key}-{tokens[1].lower()}" in VOCAB:
+        compound_key = f"{prog_key}-{tokens[1].lower()}"
+        active_vocab_key = compound_key
+        subcommand_idx = 2
+    elif prog_key in VOCAB and len(tokens) > 1:
+        # Scan for the actual subcommand token (skip flags and flag arguments)
+        i = 1
+        while i < len(tokens):
+            tok = tokens[i]
+            if tok in _FLAGS_WITH_ARGS and i + 1 < len(tokens):
+                i += 2  # Skip flag and its argument value
+                continue
+            if not tok.startswith("-"):
+                subcommand_idx = i
+                break
+            i += 1
+
+    # 4. Correct subcommand typo if found
+    if active_vocab_key in VOCAB and subcommand_idx != -1 and subcommand_idx < len(tokens):
+        subs = VOCAB[active_vocab_key].get("subcommands", [])
+        sub = tokens[subcommand_idx]
         if (
             subs
             and sub not in subs
@@ -80,17 +119,26 @@ def fuzzy_match_command(cmd: Command) -> Optional[Tuple[str, float, str]]:
         ):
             match = difflib.get_close_matches(sub.lower(), [s.lower() for s in subs], n=1, cutoff=0.62)
             if match:
-                # Preserve original casing from the subcommands list
                 correct_sub = next((s for s in subs if s.lower() == match[0]), match[0])
-                fixed[1] = correct_sub
+                fixed[subcommand_idx] = correct_sub
                 changed = True
                 sub_conf = difflib.SequenceMatcher(None, sub.lower(), match[0]).ratio()
                 confidence = min(confidence, sub_conf)
                 notes.append(f"'{sub}' → '{correct_sub}'")
 
+    # 5. Correct single-dash vs double-dash long flag slips
+    for idx in range(1, len(fixed)):
+        token_val = fixed[idx]
+        if token_val in _COMMON_LONG_FLAGS:
+            corrected_flag = _COMMON_LONG_FLAGS[token_val]
+            fixed[idx] = corrected_flag
+            changed = True
+            confidence = min(confidence, 0.98)
+            notes.append(f"'{token_val}' → '{corrected_flag}'")
+
     if not changed:
         return None
 
     fixed_cmd_str = cmd.quote_join(fixed)
-    explanation = f"Corrected typo: {', '.join(notes)}"
+    explanation = f"Corrected: {', '.join(notes)}"
     return fixed_cmd_str, confidence, explanation
