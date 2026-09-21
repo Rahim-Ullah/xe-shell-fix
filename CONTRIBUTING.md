@@ -140,3 +140,9 @@ When reporting bugs, please include:
 ## 📄 License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
+
+"""python
+__AUTHOR__ = __XE__
+__PROFILE__ = __GitHub.com/Rahim-Ullah__
+__ROLE__ = __DEVELOPER__
+"""
