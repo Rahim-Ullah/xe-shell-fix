@@ -56,7 +56,7 @@ class CerebrasProvider(BaseProvider):
                 data = json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             detail = e.read().decode("utf-8", errors="ignore")[:250]
-            raise ProviderError(f"Cerebras API error ({e.code}): {detail}")
+            raise ProviderError(f"Cerebras API error ({e.code}): {detail}", e.code)
         except urllib.error.URLError as e:
             raise ProviderError(f"Network error connecting to Cerebras: {e.reason}")
         except Exception as e:

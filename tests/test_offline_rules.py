@@ -72,6 +72,22 @@ class TestOfflineRules(unittest.TestCase):
         fixed, conf, exp = result
         self.assertEqual(fixed, "git push --set-upstream origin feature-1")
 
+    def test_expanded_shell_typos(self):
+        cases = [
+            ("clss", "cls"),
+            ("ipconfgi /all", "ipconfig /all"),
+            ("wngit search vscode", "winget search vscode"),
+            ("pnmp install", "pnpm install"),
+            ("rufff check .", "ruff check ."),
+            ("olama run qwen", "ollama run qwen"),
+        ]
+        for raw, expected in cases:
+            cmd = Command(raw=raw, shell="powershell")
+            result = evaluate_rules(cmd)
+            self.assertIsNotNone(result, f"Failed to match typo '{raw}'")
+            fixed, conf, exp = result
+            self.assertEqual(fixed, expected)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -30,6 +30,19 @@ class TestConfig(unittest.TestCase):
         cfg = load_config()
         self.assertEqual(cfg["ai"]["gemini_api_key"], "test-key-123")
 
+    def test_secure_config_permissions(self):
+        from tempfile import NamedTemporaryFile
+        from pathlib import Path
+        from xsf.config import secure_config_permissions
+        with NamedTemporaryFile(delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        try:
+            # Should run without error cross-platform
+            secure_config_permissions(tmp_path)
+        finally:
+            if tmp_path.exists():
+                tmp_path.unlink()
+
 
 if __name__ == "__main__":
     unittest.main()

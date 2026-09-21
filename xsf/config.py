@@ -3,7 +3,7 @@ xsf.config - Configuration loader supporting Python 3.9 - 3.13+.
 """
 import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 CONFIG_DIR = Path.home() / ".shellfix"
 CONFIG_PATH = CONFIG_DIR / "config.toml"
@@ -16,17 +16,17 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "ai": {
         "enabled": True,
-        # Default fast cloud cascade:
+        # Default fast cloud cascade (Groq first — fastest LPU inference):
         "cascade": ["groq", "cerebras", "gemini", "openrouter"],
         "groq_api_key": "",
-        "groq_model": "qwen/qwen3.8-27b",
+        "groq_model": "llama-3.1-8b-instant",     # Fastest Groq model, best free limits
         "cerebras_api_key": "",
         "cerebras_model": "qwen-3.8-27b",
         "gemini_api_key": "",
-        "gemini_model": "gemini-3.6-flash",
+        "gemini_model": "gemini-2.0-flash-lite",   # Current free-tier Gemini model
         "openrouter_api_key": "",
         "openrouter_model": "meta-llama/llama-3.3-70b-instruct:free",
-        # Opt-in paid / private providers:
+        # Opt-in paid / private providers (not in default cascade):
         "grok_api_key": "",
         "grok_model": "grok-beta",
         "openai_api_key": "",
@@ -105,6 +105,7 @@ def load_config() -> Dict[str, Any]:
                     cfg[section] = vals
         except Exception:
             pass
+        secure_config_permissions(CONFIG_PATH)
 
     # Environment variable overrides
     if os.environ.get("GROQ_API_KEY"):
@@ -125,8 +126,47 @@ def load_config() -> Dict[str, Any]:
     return cfg
 
 
+def secure_config_permissions(target_path: Optional[Path] = None) -> None:
+    """
+    Enforces strict owner-only read/write permissions cross-platform.
+    - POSIX (Linux/macOS): chmod 0600 on config.toml and 0700 on ~/.shellfix directory.
+    - Windows: Uses icacls to disable inheritance (/inheritance:r) and grant
+      exclusive Full Control (/grant:r) ONLY to the current user (%USERNAME%),
+      stripping inherited ACLs that would otherwise allow BUILTIN\\Users to read plain-text API keys.
+    """
+    path = target_path or CONFIG_PATH
+    folder = path.parent
+    try:
+        if os.name != "nt":
+            import stat
+            if folder.exists():
+                os.chmod(folder, stat.S_IRWXU)
+            if path.exists():
+                os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+        else:
+            import subprocess
+            username = os.environ.get("USERNAME")
+            if username:
+                if path.exists():
+                    subprocess.run(
+                        ["icacls", str(path), "/inheritance:r", "/grant:r", f"{username}:(F)"],
+                        check=False,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                if folder.exists():
+                    subprocess.run(
+                        ["icacls", str(folder), "/inheritance:r", "/grant:r", f"{username}:(OI)(CI)(F)"],
+                        check=False,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+    except Exception:
+        pass
+
+
 def save_config(cfg: Dict[str, Any]) -> None:
-    """Saves dictionary configuration back to ~/.shellfix/config.toml."""
+    """Saves dictionary configuration back to ~/.shellfix/config.toml with strict permissions."""
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     lines: List[str] = [
         "# xe-shell-fix (xsf) configuration file",
@@ -148,7 +188,4 @@ def save_config(cfg: Dict[str, Any]) -> None:
                     lines.append(f'{k} = "{v}"')
         lines.append("")
     CONFIG_PATH.write_text("\n".join(lines), encoding="utf-8")
-    
-    import stat
-    if os.name != 'nt':  # POSIX only; Windows uses ACLs
-        os.chmod(CONFIG_PATH, stat.S_IRUSR | stat.S_IWUSR)
+    secure_config_permissions(CONFIG_PATH)
