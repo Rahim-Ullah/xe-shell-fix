@@ -43,7 +43,7 @@ function _xsf_exec {
         }
     }
 
-    $app = (Get-Command -CommandType Application xsf -ErrorAction SilentlyContinue)
+    $app = (Get-Command -CommandType Application xsf -ErrorAction SilentlyContinue | Select-Object -First 1)
     if ($app) {
         $fixed = & $app.Source $last --shell powershell @extraArgs
     } else {
@@ -57,7 +57,12 @@ function _xsf_exec {
 
 function xsf {
     if ($args.Count -gt 0 -and ($args[0] -in @("init", "config", "ui", "--version", "-v", "--help", "-h"))) {
-        & (Get-Command -CommandType Application xsf) @args
+        $exe = (Get-Command -CommandType Application xsf -ErrorAction SilentlyContinue | Select-Object -First 1)
+        if ($exe) {
+            & $exe.Source @args
+        } else {
+            python -m xsf.cli @args
+        }
         return
     }
     _xsf_exec @args
