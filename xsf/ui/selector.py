@@ -63,8 +63,11 @@ def _read_key_cross_platform() -> str:
     else:
         import termios
         import tty
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
+        try:
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+        except Exception:
+            return "CANCEL"
         try:
             tty.setraw(fd)
             ch = sys.stdin.read(1)
@@ -74,7 +77,10 @@ def _read_key_cross_platform() -> str:
                 return "CANCEL"
             if ch == "\x1b":
                 # Check for escape sequence
-                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                try:
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                except Exception:
+                    pass
                 # Read next characters if available
                 import select
                 r, _, _ = select.select([sys.stdin], [], [], 0.05)
@@ -93,6 +99,14 @@ def _read_key_cross_platform() -> str:
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
             except Exception:
                 pass
+
+
+def _safe_write(stream, text: str, fallback: str) -> None:
+    """Writes text to stream, falling back to ASCII if encoding fails (e.g. Windows cp1252)."""
+    try:
+        stream.write(text)
+    except UnicodeEncodeError:
+        stream.write(fallback)
 
 
 def _render_menu(candidates: List[Candidate], selected_idx: int) -> int:
@@ -115,10 +129,14 @@ def _render_menu(candidates: List[Candidate], selected_idx: int) -> int:
         lines_count += 1
 
         if exp and is_sel:
-            sys.stderr.write(f"      \033[90m\u2514\u2500 {exp}\033[0m\n")
+            _safe_write(sys.stderr, f"      \033[90m\u2514\u2500 {exp}\033[0m\n", f"      \033[90m\\-- {exp}\033[0m\n")
             lines_count += 1
 
-    sys.stderr.write("\033[90m[Use \u2191/\u2193 to navigate, Enter to run, 1-9 direct, Esc/q to cancel]\033[0m\n")
+    _safe_write(
+        sys.stderr,
+        "\033[90m[Use \u2191/\u2193 to navigate, Enter to run, 1-9 direct, Esc/q to cancel]\033[0m\n",
+        "\033[90m[Use Up/Down to navigate, Enter to run, 1-9 direct, Esc/q to cancel]\033[0m\n",
+    )
     lines_count += 1
     sys.stderr.flush()
     return lines_count
@@ -144,8 +162,15 @@ def choose_candidate(
     if len(candidates) == 1:
         return candidates[0]
 
-    # Non-interactive / non-TTY fallback (pipes, scripts, automated testing)
-    if not sys.stdin.isatty() or not sys.stderr.isatty():
+    # Non-interactive / non-TTY fallback (pipes, scripts, CI environments, automated testing)
+    is_ci = bool(os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") or os.environ.get("TF_BUILD"))
+    is_not_tty = (
+        not hasattr(sys.stdin, "isatty")
+        or not sys.stdin.isatty()
+        or not hasattr(sys.stderr, "isatty")
+        or not sys.stderr.isatty()
+    )
+    if is_ci or is_not_tty:
         sys.stderr.write("\n\033[1mMultiple fixes found:\033[0m\n")
         for i, (cmd, conf, exp, src) in enumerate(candidates):
             badge = "[OFFLINE]" if src == "offline" else "[AI]"
@@ -163,7 +188,7 @@ def choose_candidate(
                 return candidates[idx]
         except Exception:
             return None
-        return None
+        return candidates[0]
 
     # Interactive TTY Mode
     idx = max(0, min(default_index, len(candidates) - 1))

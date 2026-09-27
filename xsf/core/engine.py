@@ -250,7 +250,10 @@ class Engine:
             badge = "\033[1;32m[OFFLINE]\033[0m" if source == "offline" else "\033[1;36m[AI]\033[0m"
             sys.stderr.write(f"  {badge} \033[1m{fixed_cmd}\033[0m\n")
             if explanation:
-                sys.stderr.write(f"  \033[90m\u2514\u2500 {explanation} (confidence: {int(confidence * 100)}%)\033[0m\n")
+                try:
+                    sys.stderr.write(f"  \033[90m\u2514\u2500 {explanation} (confidence: {int(confidence * 100)}%)\033[0m\n")
+                except UnicodeEncodeError:
+                    sys.stderr.write(f"  \033[90m\\-- {explanation} (confidence: {int(confidence * 100)}%)\033[0m\n")
             # Single candidate: pass through safety gate (Enter/y for safe, full "yes" for destructive)
             auto_flag = auto_approve or (self.auto_approve_safe and confidence >= 0.95)
             approved = SafetyGuard.confirm(fixed_cmd, auto_approve=auto_flag, dry_run=dry_run)

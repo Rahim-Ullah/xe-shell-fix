@@ -133,40 +133,44 @@ def load_config() -> Dict[str, Any]:
 def secure_config_permissions(target_path: Optional[Path] = None) -> None:
     """
     Enforces strict owner-only read/write permissions cross-platform.
-    - POSIX (Linux/macOS): chmod 0600 on config.toml and 0700 on ~/.shellfix directory.
+    - POSIX (Linux/macOS): chmod 0600 on config.toml, 0700 on ~/.shellfix directory.
     - Windows: Uses icacls to disable inheritance (/inheritance:r) and grant
       exclusive Full Control (/grant:r) ONLY to the current user (%USERNAME%),
       stripping inherited ACLs that would otherwise allow BUILTIN\\Users to read plain-text API keys.
     """
     path = target_path or CONFIG_PATH
-    folder = path.parent
     try:
         if os.name != "nt":
             import stat
-            if folder.exists():
-                os.chmod(folder, stat.S_IRWXU)
             if path.exists():
-                os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+                if path.is_dir():
+                    os.chmod(path, stat.S_IRWXU)
+                else:
+                    os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+            if target_path is None and CONFIG_DIR.exists():
+                os.chmod(CONFIG_DIR, stat.S_IRWXU)
         else:
             import subprocess
             username = os.environ.get("USERNAME")
             if username:
                 if path.exists():
+                    perm = f"{username}:(OI)(CI)(F)" if path.is_dir() else f"{username}:(F)"
                     subprocess.run(
-                        ["icacls", str(path), "/inheritance:r", "/grant:r", f"{username}:(F)"],
+                        ["icacls", str(path), "/inheritance:r", "/grant:r", perm],
                         check=False,
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
                     )
-                if folder.exists():
+                if target_path is None and CONFIG_DIR.exists():
                     subprocess.run(
-                        ["icacls", str(folder), "/inheritance:r", "/grant:r", f"{username}:(OI)(CI)(F)"],
+                        ["icacls", str(CONFIG_DIR), "/inheritance:r", "/grant:r", f"{username}:(OI)(CI)(F)"],
                         check=False,
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
                     )
     except Exception:
         pass
+
 
 
 def save_config(cfg: Dict[str, Any]) -> None:
