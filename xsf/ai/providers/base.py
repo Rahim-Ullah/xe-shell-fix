@@ -22,10 +22,13 @@ SYSTEM_PROMPT = (
     "Rules:\n"
     "1. fixed_command must be shell-dialect-aware and directly executable — no placeholders like <value>.\n"
     "2. Preserve all original arguments, paths, and flags that are still valid.\n"
-    "3. If the command is fundamentally unfixable, return empty string for fixed_command and confidence 0.0.\n"
-    "4. Set destructive=true for: rm -rf, DROP TABLE, git push --force, format drives, dd if=, mkfs.\n"
+    "3. If the command failed because the target is already in the desired state (e.g. deleting a file that is already gone, stopping a process that is already dead, creating a folder that already exists) OR if repeating the command would just fail again with the same error, return empty string for fixed_command and confidence 0.0 with a clear explanation.\n"
+    "4. Set destructive=true ONLY for mass-destructive actions: rm -rf, DROP TABLE/DATABASE, git push --force, format drives, dd if=, mkfs. Normal single-file removals (e.g. rm file.png) or moves are NOT destructive.\n"
     "5. Escape special characters correctly for the target shell.\n"
-    "6. Never explain the JSON — output the JSON object only."
+    "6. Never explain the JSON — output the JSON object only.\n"
+    "7. Adapt paths and syntax to the specified shell (e.g. forward slashes for Git Bash/Bash/Zsh, proper escaping for PowerShell).\n"
+    "8. For missing package, runtime, or command-not-found errors, suggest the exact installation, activation, or startup command.\n"
+    "9. Natural Language & Cross-Shell Translation: If the user entered natural English instructions or cross-shell terms (e.g. 'delete file.png', 'rename a b', 'move a b', 'show git log', 'find all pdfs', 'extract archive.zip'), translate their intention into the target shell's idiomatic command with high confidence (0.85-0.98)."
 )
 
 
@@ -53,6 +56,24 @@ class BaseProvider(ABC):
         Raises ProviderError on failure.
         """
         pass
+
+    @classmethod
+    def finalize_prediction(
+        cls,
+        fixed_cmd: str,
+        explanation: str,
+        confidence: float,
+        destructive_hint: bool = False,
+    ) -> Tuple[str, str, float]:
+        """
+        Authoritative post-processing on AI predictions.
+        Only genuinely destructive commands (verified by safety.py) receive a confidence penalty.
+        """
+        from xsf.core.safety import is_destructive
+
+        if fixed_cmd and is_destructive(fixed_cmd):
+            confidence = min(confidence, 0.4)
+        return fixed_cmd, explanation, confidence
 
     @staticmethod
     def parse_json_response(raw_text: str) -> Tuple[str, str, float, bool]:
@@ -106,3 +127,4 @@ class BaseProvider(ABC):
         destructive = bool(data.get("destructive", False))
 
         return fixed_cmd, explanation, confidence, destructive
+

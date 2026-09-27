@@ -22,6 +22,7 @@ class NpmMissingRunRule(Rule):
     """Converts `npm dev` or `npm build` into `npm run dev` or `npm run build`."""
     name = "npm_missing_run"
     priority = 20
+    requires_output = False
 
     def match(self, cmd: Command) -> bool:
         if len(cmd.tokens) >= 2 and cmd.tokens[0].lower() in ("npm", "pnpm"):
@@ -40,6 +41,7 @@ class YarnInstallPackageRule(Rule):
     """Converts `yarn install <pkg>` to `yarn add <pkg>`."""
     name = "yarn_install_to_add"
     priority = 20
+    requires_output = False
 
     def match(self, cmd: Command) -> bool:
         if len(cmd.tokens) >= 3 and cmd.tokens[0].lower() == "yarn":
@@ -55,6 +57,7 @@ class CargoShorthandRule(Rule):
     """Expands cargo single-letter shorthands: cargo b, cargo r, cargo t, cargo c."""
     name = "cargo_shorthands"
     priority = 25
+    requires_output = False
 
     SHORTHANDS = {
         "b": "build",
@@ -78,6 +81,7 @@ class GoRunBareRule(Rule):
     """Converts `go run` (missing package/file) to `go run .`."""
     name = "go_run_bare"
     priority = 25
+    requires_output = False
 
     def match(self, cmd: Command) -> bool:
         if len(cmd.tokens) == 2 and cmd.tokens[0].lower() == "go" and cmd.tokens[1].lower() == "run":

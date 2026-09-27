@@ -1,0 +1,58 @@
+name: "💡 Feature Request"
+description: "Suggest an idea, new offline rule, shell integration, or AI enhancement for xe-shell-fix."
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new idea to make `xe-shell-fix` faster, safer, and smarter!
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Need
+      description: Is your feature request related to a specific annoyance, unsupported shell, or command failure pattern?
+      placeholder: "e.g. When using kubectl with misspelled subcommands, xsf currently..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution or Behavior
+      description: Describe how you envision this working from a user/developer perspective.
+      placeholder: "e.g. Add a dedicated rule for kubectl namespace switching or expand vocabulary.json to cover..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      options:
+        - Deterministic Offline Rule Plugin
+        - AI Provider Integration / Router Enhancement
+        - Shell Hook & Dialect Support (PowerShell, Bash, Zsh, Fish)
+        - Performance Optimization & Latency Reduction
+        - Security Policy & Safety Gate Hardening
+        - Developer Experience / Documentation / Tooling
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions, existing workarounds, or prior art you considered?
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: "I am willing to submit a Pull Request implementing this feature."
+          required: false

@@ -74,6 +74,16 @@ class TestHookContent(unittest.TestCase):
         for name in ("xsf", "xefix", "xeeee", "fuxx"):
             self.assertIn(name, content, f"Fish hook missing function: {name}")
 
+    def test_bash_injects_init_python(self):
+        content = get_hook_script("bash")
+        self.assertNotIn("@XSF_INIT_PYTHON@", content, "Placeholder @XSF_INIT_PYTHON@ must be replaced")
+        self.assertIn("import xsf", content, "Bash hook must verify xsf import before blind execution")
+
+    def test_powershell_injects_init_python(self):
+        content = get_hook_script("powershell")
+        self.assertNotIn("@XSF_INIT_PYTHON@", content, "Placeholder @XSF_INIT_PYTHON@ must be replaced")
+        self.assertIn("import xsf", content, "PowerShell hook must verify xsf import before blind execution")
+
 
 class TestGetHookScript(unittest.TestCase):
     """Test get_hook_script() returns content for all supported shells."""

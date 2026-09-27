@@ -38,6 +38,9 @@ class AICache:
         try:
             CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
             CACHE_FILE.write_text(json.dumps(cls._cache, indent=2), encoding="utf-8")
+            # Restrict cache file permissions to owner-only (same as config.toml)
+            from xsf.config import secure_config_permissions
+            secure_config_permissions(CACHE_FILE)
         except Exception:
             pass
 

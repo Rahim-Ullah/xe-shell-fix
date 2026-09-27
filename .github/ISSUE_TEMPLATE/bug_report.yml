@@ -1,0 +1,113 @@
+name: "🐛 Bug Report"
+description: "Report a reproducible bug with xe-shell-fix."
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report. The more detail you provide, the faster we can fix it.
+
+        **⚠️ Security issue?** Do NOT use this form. Use [GitHub Security Advisories](https://github.com/rahim-ullah/xe-shell-fix/security/advisories/new) instead.
+
+  - type: input
+    id: version
+    attributes:
+      label: xe-shell-fix version
+      description: Run `xsf --version` and paste the output here.
+      placeholder: "xsf 1.1.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Windows 11
+        - Windows 10
+        - Ubuntu / Debian (Linux)
+        - Fedora / RHEL / CentOS (Linux)
+        - Arch Linux
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Other (describe in details below)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: shell
+    attributes:
+      label: Shell
+      options:
+        - Git Bash (MINGW64)
+        - PowerShell 7+ (pwsh)
+        - PowerShell 5.1
+        - Bash
+        - Zsh
+        - Fish
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      description: Run `python --version` and paste the output.
+      placeholder: "Python 3.11.9"
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Failing command
+      description: The exact command you typed that caused the error.
+      placeholder: "gti status"
+    validations:
+      required: true
+
+  - type: textarea
+    id: stderr
+    attributes:
+      label: Error output (stderr)
+      description: Paste the exact error message you received.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: xsf_output
+    attributes:
+      label: What xsf suggested
+      description: What fix did xsf propose? What did you expect instead?
+      placeholder: |
+        xsf suggested: git statusu
+        Expected: git status
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimum steps to trigger this bug consistently.
+      placeholder: |
+        1. Type 'giit statusu' in Git Bash
+        2. Run xsf
+        3. See wrong suggestion
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: security_check
+    attributes:
+      label: "Before submitting"
+      options:
+        - label: "I removed all API keys, passwords, tokens, and sensitive information from this report."
+          required: true
+        - label: "This is NOT a security vulnerability. (For vulnerabilities, use [GitHub Security Advisories](https://github.com/rahim-ullah/xe-shell-fix/security/advisories/new).)"
+          required: true
+        - label: "I searched existing issues and this bug has not been reported already."
+          required: true

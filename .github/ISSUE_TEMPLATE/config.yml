@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: 📖 Usage Guide (HOWTOUSE.md)
+    url: https://github.com/rahim-ullah/xe-shell-fix/blob/main/HOWTOUSE.md
+    about: Installation, shell hooks, API keys, and pro usage guide.
+
+  - name: 🔐 Security Vulnerability (SECURITY.md)
+    url: https://github.com/rahim-ullah/xe-shell-fix/security/advisories/new
+    about: Report security issues privately — do NOT use public Issues for vulnerabilities.
+
+  - name: 💬 General Discussion
+    url: https://github.com/rahim-ullah/xe-shell-fix/discussions
+    about: Questions, ideas, and community conversation.

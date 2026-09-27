@@ -66,7 +66,4 @@ class OllamaProvider(BaseProvider):
 
         raw_text = data.get("response", "")
         fixed_cmd, explanation, confidence, destructive = self.parse_json_response(raw_text)
-        if destructive:
-            confidence = min(confidence, 0.4)
-
-        return fixed_cmd, explanation, confidence
+        return self.finalize_prediction(fixed_cmd, explanation, confidence, destructive)

@@ -39,6 +39,7 @@ class GitCommitBareMessageRule(Rule):
     """Detects `git commit "some message"` missing `-m` flag."""
     name = "git_commit_missing_m"
     priority = 12
+    requires_output = False
 
     def match(self, cmd: Command) -> bool:
         if len(cmd.tokens) == 3 and cmd.tokens[0].lower() == "git" and cmd.tokens[1].lower() == "commit":
@@ -55,6 +56,7 @@ class GitBranchRenameOrDeleteRule(Rule):
     """Detects `git branch d <branch>` -> `git branch -d <branch>`."""
     name = "git_branch_flag_fix"
     priority = 15
+    requires_output = False
 
     def match(self, cmd: Command) -> bool:
         if len(cmd.tokens) >= 4 and cmd.tokens[0].lower() == "git" and cmd.tokens[1].lower() == "branch":

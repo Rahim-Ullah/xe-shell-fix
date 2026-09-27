@@ -86,9 +86,7 @@ class GeminiProvider(BaseProvider):
                     continue
 
                 fixed_cmd, explanation, confidence, destructive = self.parse_json_response(raw_text)
-                if destructive:
-                    confidence = min(confidence, 0.4)
-                return fixed_cmd, explanation, confidence
+                return self.finalize_prediction(fixed_cmd, explanation, confidence, destructive)
 
             except urllib.error.HTTPError as e:
                 detail = e.read().decode("utf-8", errors="ignore")[:300]

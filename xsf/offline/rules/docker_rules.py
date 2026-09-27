@@ -10,6 +10,7 @@ class DockerComposeMigrationRule(Rule):
     """Converts legacy `docker-compose` to modern `docker compose`."""
     name = "docker_compose_v2"
     priority = 10
+    requires_output = False
 
     def match(self, cmd: Command) -> bool:
         return bool(cmd.tokens and cmd.tokens[0].lower() == "docker-compose")
@@ -23,6 +24,7 @@ class DockerRunInteractiveRule(Rule):
     """Adds `-it` if running an interactive shell container without TTY."""
     name = "docker_run_interactive"
     priority = 20
+    requires_output = False
 
     def match(self, cmd: Command) -> bool:
         if len(cmd.tokens) >= 3 and cmd.tokens[0].lower() in ("docker", "podman") and cmd.tokens[1].lower() == "run":

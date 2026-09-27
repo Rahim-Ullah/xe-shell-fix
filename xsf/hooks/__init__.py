@@ -2,6 +2,7 @@
 xsf.hooks - Shell initialization generator.
 """
 from pathlib import Path
+import sys
 
 HOOKS_DIR = Path(__file__).resolve().parent
 
@@ -25,4 +26,7 @@ def get_hook_script(shell_name: str) -> str:
     if not target.exists():
         raise FileNotFoundError(f"Hook template not found for {shell_name}")
 
-    return target.read_text(encoding="utf-8")
+    content = target.read_text(encoding="utf-8")
+    python_exe = sys.executable.replace("\\", "/")
+    content = content.replace("@XSF_INIT_PYTHON@", python_exe)
+    return content

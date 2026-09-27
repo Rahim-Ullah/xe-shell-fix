@@ -1,6 +1,34 @@
 # xe-shell-fix (xsf) - PowerShell Hook
 # Add to your $PROFILE:
-#   (& (Get-Command -CommandType Application xsf) init powershell | Out-String) | Invoke-Expression
+#   try { (& (Get-Command -CommandType Application xsf -ErrorAction Stop | Select-Object -First 1) init powershell | Out-String) | Invoke-Expression } catch { (& python -m xsf.cli init powershell | Out-String) | Invoke-Expression }
+
+$_XSF_INIT_PYTHON = "@XSF_INIT_PYTHON@"
+
+function _xsf_run_cli {
+    param([string[]]$CliArgs)
+    $app = (Get-Command -CommandType Application xsf -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($app) {
+        try {
+            return & $app.Source @CliArgs
+        } catch {}
+    }
+    if ($_XSF_INIT_PYTHON -and (Test-Path $_XSF_INIT_PYTHON)) {
+        return & $_XSF_INIT_PYTHON -m xsf.cli @CliArgs
+    }
+    try {
+        $test = python -c "import xsf" 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            return python -m xsf.cli @CliArgs
+        }
+    } catch {}
+    try {
+        $testPy = py -c "import xsf" 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            return py -m xsf.cli @CliArgs
+        }
+    } catch {}
+    return python -m xsf.cli @CliArgs
+}
 
 function _xsf_exec {
     param(
@@ -43,12 +71,8 @@ function _xsf_exec {
         }
     }
 
-    $app = (Get-Command -CommandType Application xsf -ErrorAction SilentlyContinue | Select-Object -First 1)
-    if ($app) {
-        $fixed = & $app.Source $last --shell powershell @extraArgs
-    } else {
-        $fixed = python -m xsf.cli $last --shell powershell @extraArgs
-    }
+    $cliCallArgs = @($last, "--shell", "powershell") + $extraArgs
+    $fixed = _xsf_run_cli $cliCallArgs
 
     if ($LASTEXITCODE -eq 0 -and $fixed) {
         Invoke-Expression $fixed
@@ -57,12 +81,7 @@ function _xsf_exec {
 
 function xsf {
     if ($args.Count -gt 0 -and ($args[0] -in @("init", "config", "ui", "--version", "-v", "--help", "-h"))) {
-        $exe = (Get-Command -CommandType Application xsf -ErrorAction SilentlyContinue | Select-Object -First 1)
-        if ($exe) {
-            & $exe.Source @args
-        } else {
-            python -m xsf.cli @args
-        }
+        _xsf_run_cli $args
         return
     }
     _xsf_exec @args

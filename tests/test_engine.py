@@ -145,6 +145,70 @@ class TestEngineExecuteFlow(unittest.TestCase):
 
         self.assertEqual(exit_code, 1)
 
+    def test_already_resolved_removal_returns_0(self):
+        """When rm fails because file is already missing, execute_flow prints INFO and returns 0."""
+        cmd = Command(
+            raw='rm "clf sign.png"',
+            stderr_text="rm: cannot remove 'clf sign.png': No such file or directory",
+            shell="bash",
+        )
+        with patch("sys.stderr") as mock_err:
+            exit_code = self.engine.execute_flow(cmd)
+
+        self.assertEqual(exit_code, 0)
+
+    def test_already_resolved_missing_on_disk_without_stderr(self):
+        """When rm targets a nonexistent file even without captured stderr, execute_flow returns 0."""
+        cmd = Command(
+            raw='rm "completely_nonexistent_random_file_xyz.txt"',
+            stderr_text="",
+            shell="bash",
+        )
+        with patch("sys.stderr"):
+            exit_code = self.engine.execute_flow(cmd)
+
+        self.assertEqual(exit_code, 0)
+
+    def test_already_resolved_process_kill(self):
+        """When kill fails because process is already dead, execute_flow returns 0."""
+        cmd = Command(
+            raw="kill 9999",
+            stderr_text="bash: kill: (9999) - No such process",
+            shell="bash",
+        )
+        with patch("sys.stderr"):
+            exit_code = self.engine.execute_flow(cmd)
+
+        self.assertEqual(exit_code, 0)
+
+    @patch("xsf.core.engine.run_offline_engine")
+    def test_futile_identical_fix_rejected(self, mock_offline):
+        """If a fix proposes the exact command that just failed, it must be rejected."""
+        mock_offline.return_value = ("rm 'clf sign.png'", 0.9, "Identical")
+        cmd = Command(raw="rm 'clf sign.png'", stderr_text="some error", shell="bash")
+
+        with patch.object(self.engine.ai_router, "route", return_value=None):
+            result = self.engine.find_fix(cmd)
+
+        self.assertIsNone(result)
+
+    @patch("xsf.core.engine.Engine.find_candidates")
+    @patch("xsf.ui.selector.choose_candidate")
+    def test_multi_candidate_selection_executes_safe_directly(self, mock_choose, mock_find):
+        """When user selects a safe candidate via arrow keys, it executes directly without double prompt."""
+        mock_find.return_value = [
+            ("git status", 0.95, "Fix status", "offline"),
+            ("git stash", 0.80, "Stash changes", "offline"),
+        ]
+        mock_choose.return_value = ("git status", 0.95, "Fix status", "offline")
+        cmd = Command(raw="giit stas", shell="bash")
+
+        with patch("sys.stdout") as mock_out:
+            exit_code = self.engine.execute_flow(cmd)
+
+        self.assertEqual(exit_code, 0)
+        mock_out.write.assert_called_with("git status\n")
+
 
 if __name__ == "__main__":
     unittest.main()

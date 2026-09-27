@@ -1,0 +1,20 @@
+# CODEOWNERS
+# This file defines who is automatically requested for review on pull requests.
+# Syntax: <pattern> <@user-or-team>
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for all files
+* @Rahim-Ullah
+
+# Security-sensitive subsystems — always require maintainer review
+xsf/core/safety.py @Rahim-Ullah
+xsf/core/engine.py @Rahim-Ullah
+xsf/hooks/ @Rahim-Ullah
+xsf/config.py @Rahim-Ullah
+
+# AI provider integrations
+xsf/ai/ @Rahim-Ullah
+
+# Community health files
+CODE_OF_CONDUCT.md @Rahim-Ullah
+SECURITY.md @Rahim-Ullah

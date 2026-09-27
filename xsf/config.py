@@ -76,7 +76,11 @@ def _simple_toml_parse(content: str) -> Dict[str, Any]:
                     items = [it.strip().strip('"\'') for it in inner.split(",") if it.strip()]
                     current_section[key] = items
             else:
-                current_section[key] = val
+                # Try float before falling back to raw string
+                try:
+                    current_section[key] = float(val)
+                except ValueError:
+                    current_section[key] = val
     return result
 
 

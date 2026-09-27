@@ -1,12 +1,59 @@
 #!/usr/bin/env bash
 # xe-shell-fix (xsf) - Bash & Git Bash Hook
 # Add to ~/.bashrc:
-#   eval "$(command xsf init bash)"
+#   eval "$(python -m xsf.cli init bash 2>/dev/null || command xsf init bash)"
+
+_XSF_INIT_PYTHON="@XSF_INIT_PYTHON@"
 
 _xsf_exec() {
-    # If called with subcommands or flags, delegate to real binary
+    _xsf_runner() {
+        # 1. Dedicated standalone xsf binary on PATH (shebang points to its own Python environment)
+        if command -v xsf &>/dev/null; then
+            command xsf "$@"
+            local rc=$?
+            if [ $rc -ne 126 ]; then
+                return $rc
+            fi
+        fi
+
+        # 2. Pinned Python interpreter captured during 'xsf init' (immune to active .venv)
+        if [ -n "$_XSF_INIT_PYTHON" ] && "$_XSF_INIT_PYTHON" -c "import xsf" &>/dev/null; then
+            "$_XSF_INIT_PYTHON" -m xsf.cli "$@"
+            return $?
+        fi
+
+        # 3. Active shell python / python3 ONLY IF xsf module is actually installed in it
+        if command -v python &>/dev/null && python -c "import xsf" &>/dev/null; then
+            python -m xsf.cli "$@"
+            return $?
+        elif command -v python3 &>/dev/null && python3 -c "import xsf" &>/dev/null; then
+            python3 -m xsf.cli "$@"
+            return $?
+        fi
+
+        # 4. Windows Python launcher 'py' (invokes system Python, bypassing project .venv)
+        if command -v py &>/dev/null && py -c "import xsf" &>/dev/null; then
+            py -m xsf.cli "$@"
+            return $?
+        fi
+
+        # 5. Last resort fallback
+        if command -v xsf &>/dev/null; then
+            command xsf "$@"
+            return $?
+        elif command -v python &>/dev/null; then
+            python -m xsf.cli "$@"
+            return $?
+        elif command -v python3 &>/dev/null; then
+            python3 -m xsf.cli "$@"
+            return $?
+        fi
+        return 1
+    }
+
+    # If called with subcommands or flags, delegate to runner
     if [ "$1" = "init" ] || [ "$1" = "config" ] || [ "$1" = "ui" ] || [ "$1" = "--version" ] || [ "$1" = "-v" ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-        command xsf "$@"
+        _xsf_runner "$@"
         return $?
     fi
 
@@ -19,13 +66,7 @@ _xsf_exec() {
     fi
 
     local fixed
-    if command -v xsf &>/dev/null; then
-        fixed=$(command xsf "$last_cmd" --shell bash "$@")
-    elif command -v python &>/dev/null; then
-        fixed=$(python -m xsf.cli "$last_cmd" --shell bash "$@")
-    else
-        fixed=$(python3 -m xsf.cli "$last_cmd" --shell bash "$@")
-    fi
+    fixed=$(_xsf_runner "$last_cmd" --shell bash "$@")
     local status=$?
 
     if [ $status -eq 0 ] && [ -n "$fixed" ]; then
@@ -34,6 +75,11 @@ _xsf_exec() {
         eval "$fixed"
     fi
 }
+
+xsf()   { _xsf_exec "$@"; }
+xefix() { _xsf_exec "$@"; }
+xeeee() { _xsf_exec "$@"; }
+fuxx()  { _xsf_exec "$@"; }
 
 alias xsf='_xsf_exec'
 alias xefix='_xsf_exec'

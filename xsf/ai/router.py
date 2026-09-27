@@ -25,8 +25,8 @@ from xsf.ai.providers import (
 
 # HTTP status codes where retrying the SAME provider makes sense
 _RETRYABLE_CODES = {429, 500, 502, 503, 504}
-# Status codes where we should skip to the NEXT provider immediately
-_SKIP_CODES = {401, 403, 404, 400}
+# Status codes where we should skip to the NEXT provider immediately (auth, billing, not-found)
+_SKIP_CODES = {400, 401, 402, 403, 404}
 
 
 class AIRouter:
@@ -43,15 +43,15 @@ class AIRouter:
             api_key=self.ai_cfg.get("groq_api_key", ""),
             model=self.ai_cfg.get("groq_model", "qwen/qwen3.8-27b"),
         )
-        # Cerebras (Wafer-scale, very fast)
-        self.providers["cerebras"] = CerebrasProvider(
-            api_key=self.ai_cfg.get("cerebras_api_key", ""),
-            model=self.ai_cfg.get("cerebras_model", "qwen-3.8-27b"),
-        )
-        # Gemini (Free, generous quota)
+        # Gemini (Free, generous 1500 RPD quota — high priority)
         self.providers["gemini"] = GeminiProvider(
             api_key=self.ai_cfg.get("gemini_api_key", ""),
             model=self.ai_cfg.get("gemini_model", "gemini-flash-latest"),
+        )
+        # Cerebras (Wafer-scale, fallback)
+        self.providers["cerebras"] = CerebrasProvider(
+            api_key=self.ai_cfg.get("cerebras_api_key", ""),
+            model=self.ai_cfg.get("cerebras_model", "llama3.1-8b"),
         )
         # OpenRouter (Free-tier fallback)
         self.providers["openrouter"] = OpenRouterProvider(
@@ -81,13 +81,22 @@ class AIRouter:
         Build the ordered provider cascade.
         - Config-specified cascade is used as the base order.
         - Groq is always inserted at position 0 if configured (fastest provider).
+        - Gemini (1500 RPD free tier) is prioritized ahead of Cerebras.
         - Opt-in providers (grok, openai) are appended if configured but not listed.
         """
-        base: List[str] = list(self.ai_cfg.get("cascade", ["groq", "cerebras", "gemini", "openrouter"]))
+        base: List[str] = list(self.ai_cfg.get("cascade", ["groq", "gemini", "cerebras", "openrouter"]))
 
         # Guarantee Groq is first if configured — it's the fastest and most reliable
         if self.providers["groq"].is_configured() and "groq" in base:
             base = ["groq"] + [x for x in base if x != "groq"]
+
+        # Prioritize Gemini (1500 RPD free tier) ahead of Cerebras (unpaid tier returns 402)
+        if "gemini" in base and "cerebras" in base:
+            g_idx = base.index("gemini")
+            c_idx = base.index("cerebras")
+            if c_idx < g_idx:
+                base.remove("gemini")
+                base.insert(c_idx, "gemini")
 
         # Append opt-in providers if configured and not already in cascade
         for opt_in in ("grok", "openai"):
@@ -169,8 +178,11 @@ class AIRouter:
             except ProviderError as e:
                 code = e.status_code
                 if code in _SKIP_CODES:
-                    # Auth/not-found errors — skip this provider immediately
-                    sys.stderr.write(f"  ({name} skipped: {e})\n")
+                    # Auth/not-found/payment errors — skip this provider immediately
+                    if code == 402:
+                        sys.stderr.write(f"  ({name} skipped: payment or credits required, falling back)\n")
+                    else:
+                        sys.stderr.write(f"  ({name} skipped: {e})\n")
                     return None
                 elif code in _RETRYABLE_CODES and attempt < max_retries:
                     # Transient error — wait and retry once

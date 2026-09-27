@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xe-shell-fix"
-version = "1.1.0"
+version = "1.1.1"
 description = "Universal, resilient shell command auto-repair assistant for PowerShell, Git Bash, Bash, Zsh, and Fish."
 readme = "README.md"
 authors = [
@@ -14,7 +14,7 @@ license = { text = "MIT" }
 requires-python = ">=3.9"
 keywords = ["terminal", "shell", "bash", "zsh", "powershell", "fish", "cli", "ai", "gemini", "thefuck"]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",

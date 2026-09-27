@@ -18,6 +18,7 @@ class PythonMissingModuleFlagRule(Rule):
     """Detects `python venv .venv` and converts to `python -m venv .venv`."""
     name = "python_missing_m"
     priority = 10
+    requires_output = False
 
     def match(self, cmd: Command) -> bool:
         if len(cmd.tokens) >= 2 and cmd.tokens[0].lower() in ("python", "python3", "py"):
@@ -37,6 +38,7 @@ class VenvActivationRule(Rule):
     """Detects failed venv activation commands and suggests the shell-specific syntax."""
     name = "venv_activation"
     priority = 15
+    requires_output = False
 
     def match(self, cmd: Command) -> bool:
         raw = cmd.raw.lower()

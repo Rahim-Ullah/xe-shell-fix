@@ -215,6 +215,7 @@ class CommonShellTyposRule(Rule):
     """Corrects common shell builtin typos like cdd -> cd, lss/sl -> ls, claer -> clear."""
     name = "common_shell_typos"
     priority = 4
+    requires_output = False
 
     def match(self, cmd: Command) -> bool:
         if not cmd.tokens:
@@ -232,6 +233,7 @@ class CdDotDotRule(Rule):
     """Corrects `cd..` to `cd ..`."""
     name = "cd_dot_dot"
     priority = 5
+    requires_output = False
 
     def match(self, cmd: Command) -> bool:
         return cmd.raw.strip() == "cd.." or cmd.tokens == ["cd.."]
@@ -240,10 +242,91 @@ class CdDotDotRule(Rule):
         return "cd ..", 1.0, "Added space between 'cd' and '..'"
 
 
+class CrossShellNaturalCommandsRule(Rule):
+    """
+    Translates common natural language verbs and cross-shell commands (e.g. Windows -> POSIX or vice versa).
+    Examples:
+      - 'delete file.txt' or 'del file.txt' in Bash -> 'rm file.txt'
+      - 'rename old new' or 'ren old new' in Bash -> 'mv old new'
+      - 'move src dst' in Bash -> 'mv src dst'
+      - 'copy src dst' in Bash -> 'cp src dst'
+      - 'cls' in Bash -> 'clear'
+      - 'type file.txt' in Bash -> 'cat file.txt'
+      - 'md folder' in Bash -> 'mkdir folder'
+      - 'rd folder' in Bash -> 'rmdir folder'
+    """
+    name = "cross_shell_natural_commands"
+    priority = 6
+    requires_output = False
+
+    def match(self, cmd: Command) -> bool:
+        if not cmd.tokens:
+            return False
+        verb = cmd.tokens[0].lower()
+        if cmd.shell in ("bash", "gitbash", "zsh", "fish"):
+            return verb in ("delete", "del", "erase", "remove", "rename", "ren", "move", "copy", "cls", "type", "md", "rd")
+        elif cmd.shell in ("powershell", "pwsh"):
+            return verb in ("delete", "erase", "remove")
+        return False
+
+    def get_new_command(self, cmd: Command) -> Optional[Tuple[str, float, str]]:
+        verb = cmd.tokens[0].lower()
+        args = cmd.tokens[1:]
+
+        if cmd.shell in ("bash", "gitbash", "zsh", "fish"):
+            if verb in ("delete", "del", "erase", "remove"):
+                if not args:
+                    return None
+                new_tokens = ["rm"] + args
+                return cmd.quote_join(new_tokens), 0.95, f"Translated natural verb '{verb}' to POSIX 'rm'"
+            elif verb in ("rename", "ren"):
+                if len(args) < 2:
+                    return None
+                new_tokens = ["mv"] + args
+                return cmd.quote_join(new_tokens), 0.95, f"Translated '{verb}' to POSIX 'mv'"
+            elif verb == "move":
+                if len(args) < 2:
+                    return None
+                new_tokens = ["mv"] + args
+                return cmd.quote_join(new_tokens), 0.95, "Translated 'move' to POSIX 'mv'"
+            elif verb == "copy":
+                if len(args) < 2:
+                    return None
+                new_tokens = ["cp"] + args
+                return cmd.quote_join(new_tokens), 0.95, "Translated 'copy' to POSIX 'cp'"
+            elif verb == "cls":
+                return "clear", 1.0, "Translated Windows 'cls' to POSIX 'clear'"
+            elif verb == "type":
+                if not args:
+                    return None
+                new_tokens = ["cat"] + args
+                return cmd.quote_join(new_tokens), 0.95, "Translated Windows 'type' to POSIX 'cat'"
+            elif verb == "md":
+                if not args:
+                    return None
+                new_tokens = ["mkdir"] + args
+                return cmd.quote_join(new_tokens), 0.95, "Translated 'md' to 'mkdir'"
+            elif verb == "rd":
+                if not args:
+                    return None
+                new_tokens = ["rmdir"] + args
+                return cmd.quote_join(new_tokens), 0.95, "Translated 'rd' to 'rmdir'"
+
+        elif cmd.shell in ("powershell", "pwsh"):
+            if verb in ("delete", "erase", "remove"):
+                if not args:
+                    return None
+                new_tokens = ["Remove-Item"] + args
+                return cmd.quote_join(new_tokens), 0.95, f"Translated natural verb '{verb}' to PowerShell 'Remove-Item'"
+
+        return None
+
+
 class RelativeExecutablePrefixRule(Rule):
     """Detects when user runs a local script like `build.sh` or `setup.ps1` without `./`."""
     name = "relative_executable_prefix"
     priority = 25
+    requires_output = False
 
     def match(self, cmd: Command) -> bool:
         if not cmd.tokens:

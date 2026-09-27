@@ -67,7 +67,4 @@ class OpenAICompatProvider(BaseProvider):
             raise ProviderError("API response missing message content")
 
         fixed_cmd, explanation, confidence, destructive = self.parse_json_response(raw_text)
-        if destructive:
-            confidence = min(confidence, 0.4)
-
-        return fixed_cmd, explanation, confidence
+        return self.finalize_prediction(fixed_cmd, explanation, confidence, destructive)

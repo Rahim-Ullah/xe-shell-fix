@@ -48,6 +48,15 @@ DESTRUCTIVE_PATTERNS = [
     # System reboot/shutdown
     re.compile(r"\b(shutdown|reboot|poweroff|init\s+0)\b", re.IGNORECASE),
     re.compile(r"\bStop-Computer\b", re.IGNORECASE),
+    # Cloud & container mass-destructive actions
+    re.compile(r"\bterraform\s+destroy\b", re.IGNORECASE),
+    re.compile(r"\bpulumi\s+destroy\b", re.IGNORECASE),
+    re.compile(r"\bkubectl\s+delete\s+namespace\b", re.IGNORECASE),
+    re.compile(r"\bkubectl\s+delete\s+--all\b", re.IGNORECASE),
+    # File truncation to zero bytes
+    re.compile(r"\btruncate\s+-s\s+0\b", re.IGNORECASE),
+    # Additional DB mass-drop variants
+    re.compile(r"\bDROP\s+ALL\s+TABLES\b", re.IGNORECASE),
 ]
 
 

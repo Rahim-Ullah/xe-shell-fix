@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.1] - 2026-09-22
+
+### 📚 Documentation Architecture & Engine Hardening
+
+#### Added & Improved
+- **Comprehensive User & Operator Manual (`HOWTOUSE.md`)**:
+  - Full end-to-end documentation from git cloning to daily operations, interactive keys, and complete uninstallation.
+  - Shell-by-shell profile configuration guides for PowerShell, Git Bash, Bash, Zsh, and Fish.
+  - Dedicated configuration tutorials for Gemini, Groq, Cerebras, OpenRouter, and local Ollama instances.
+- **Architectural Refocusing (`README.md`)**:
+  - Re-anchored `README.md` around engineering principles, multi-tier engine mechanics, performance benchmarks, and security invariants.
+  - Clear cross-references between `README.md`, `HOWTOUSE.md`, and `CONTRIBUTING.md`.
+- **Natural Language & Cross-Shell Intent Engine**:
+  - Added deterministic `CrossShellNaturalCommandsRule` offline plugin (<2ms execution) mapping English verbs (`delete`, `rename`, `move`, `copy`, `cls`, `type`, `md`, `rd`) to idiomatic target shell commands.
+  - Enriched AI `SYSTEM_PROMPT` with explicit intent translation for conversational instructions (`show git log`, `find all pdfs`, etc.).
+  - Calibrated AI confidence gating: single-file operations (e.g. `rm "file.png"`, `mv`) preserve high confidence (95%+) and are no longer falsely throttled to 40%.
+- **Futile & Already-Resolved Command Prevention**:
+  - Automatically recognizes when a command failed because the target is ALREADY in the desired state (e.g. removing a nonexistent/already deleted file, killing an already dead process).
+  - Emits an instant notice (`[INFO] Target does not exist (already removed). No command needed.`) and avoids prompting the user to re-run redundant or failing commands.
+  - Rejects any fix candidate that is functionally identical to the failed command.
+- **AI Engine Hardening**:
+  - Enhanced system prompt with shell dialect path rules and explicit missing-package installation suggestions.
+  - Added multi-model automatic fallback chains to `CerebrasProvider` and `OpenRouterProvider` for maximum uptime.
+- **Developer Attribution**:
+  - Standardized the 3-line developer signature across all major markdown documents.
+
+---
+
 ## [1.1.0] - 2026-09-22
 
 ### 🚀 Resilience & Vocabulary Supercharge

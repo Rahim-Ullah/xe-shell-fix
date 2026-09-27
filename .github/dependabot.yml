@@ -1,0 +1,21 @@
+version: 2
+
+updates:
+  # Keep GitHub Actions up to date automatically
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "ci"
+
+  # Monitor pip dev dependencies (pytest, etc.)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    # The base package has zero required deps — only dev extras need monitoring
+    open-pull-requests-limit: 5
