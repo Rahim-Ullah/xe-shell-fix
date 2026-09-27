@@ -19,6 +19,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        exclude:
+          # macos-latest (Apple Silicon ARM64) does not support Python 3.9 prebuilt binaries
+          - os: macos-latest
+            python-version: "3.9"
 
     steps:
       - name: Checkout code

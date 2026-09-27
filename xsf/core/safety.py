@@ -119,7 +119,7 @@ class SafetyGuard:
             return ans.lower() == "yes"
 
         # Standard non-destructive prompt
-        sys.stderr.write(f"\nExecute? [\033[1mEnter\033[0m/y/n]: ")
+        sys.stderr.write("\nExecute? [\033[1mEnter\033[0m/y/n]: ")
         sys.stderr.flush()
         try:
             ans = input().strip()

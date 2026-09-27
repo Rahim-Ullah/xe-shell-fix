@@ -28,17 +28,22 @@ def print_status(cfg: Dict[str, Any]) -> None:
     local = cfg.get("local_llm", {})
     gen = cfg.get("general", {})
 
+    ai_status = "\033[32mYes\033[0m" if ai.get("enabled") else "\033[31mNo\033[0m"
+    local_status = "\033[32mEnabled\033[0m" if local.get("enabled") else "\033[90mDisabled (Default)\033[0m"
+    auto_status = "\033[32mYes\033[0m" if gen.get("auto_approve_safe") else "\033[90mNo (Prompt user)\033[0m"
+    help_status = "\033[32mYes\033[0m" if gen.get("help_introspection") else "\033[31mNo\033[0m"
+
     print("\n\033[1;36m=== xe-shell-fix (xsf) Current Configuration ===\033[0m")
-    print(f"  AI Enabled              : {'\033[32mYes\033[0m' if ai.get('enabled') else '\033[31mNo\033[0m'}")
+    print(f"  AI Enabled              : {ai_status}")
     print(f"  Groq API Key (Fast LPU) : {mask_key(ai.get('groq_api_key', ''))} ({ai.get('groq_model', 'qwen/qwen3.8-27b')})")
     print(f"  Cerebras Key (Wafer)    : {mask_key(ai.get('cerebras_api_key', ''))} ({ai.get('cerebras_model', 'qwen-3.8-27b')})")
     print(f"  Gemini API Key (Free)   : {mask_key(ai.get('gemini_api_key', ''))} ({ai.get('gemini_model', 'gemini-3.6-flash')})")
     print(f"  OpenRouter Key (Free)   : {mask_key(ai.get('openrouter_api_key', ''))}")
     print(f"  Grok Key (xAI Opt-In)   : {mask_key(ai.get('grok_api_key', ''))}")
     print(f"  OpenAI Key (Opt-In)     : {mask_key(ai.get('openai_api_key', ''))}")
-    print(f"  Local Ollama LLM        : {'\033[32mEnabled\033[0m' if local.get('enabled') else '\033[90mDisabled (Default)\033[0m'} ({local.get('model')})")
-    print(f"  Auto-Approve Safe       : {'\033[32mYes\033[0m' if gen.get('auto_approve_safe') else '\033[90mNo (Prompt user)\033[0m'}")
-    print(f"  Help Introspection      : {'\033[32mYes\033[0m' if gen.get('help_introspection') else '\033[31mNo\033[0m'}")
+    print(f"  Local Ollama LLM        : {local_status} ({local.get('model')})")
+    print(f"  Auto-Approve Safe       : {auto_status}")
+    print(f"  Help Introspection      : {help_status}")
     print(f"  Active Aliases          : {', '.join(gen.get('aliases', []))}")
     print("\033[1;36m================================================\033[0m\n")
 
@@ -143,11 +148,13 @@ def run_interactive_tui() -> None:
         elif choice == "7":
             current = cfg["local_llm"].get("enabled", False)
             cfg["local_llm"]["enabled"] = not current
-            print(f"Local Ollama LLM is now {'\033[32mENABLED\033[0m' if not current else '\033[31mDISABLED\033[0m'}")
+            state_str = "\033[32mENABLED\033[0m" if not current else "\033[31mDISABLED\033[0m"
+            print(f"Local Ollama LLM is now {state_str}")
         elif choice == "8":
             current = cfg["general"].get("auto_approve_safe", False)
             cfg["general"]["auto_approve_safe"] = not current
-            print(f"Auto-approve safe commands is now {'\033[32mENABLED\033[0m' if not current else '\033[31mDISABLED\033[0m'}")
+            state_str = "\033[32mENABLED\033[0m" if not current else "\033[31mDISABLED\033[0m"
+            print(f"Auto-approve safe commands is now {state_str}")
         elif choice == "9":
             test_connections(cfg)
             input("\nPress Enter to continue...")
