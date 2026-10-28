@@ -35,8 +35,17 @@ function _xsf_exec {
         [switch]$Rerun,
         [switch]$Offline,
         [switch]$Ai,
-        [switch]$Auto
+        [switch]$Auto,
+        [switch]$DryRun,
+        [switch]$NoCache,
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$RemainingArgs
     )
+
+    if ($RemainingArgs -and $RemainingArgs.Count -gt 0 -and ($RemainingArgs[0] -in @("init", "config", "ui", "setup", "power", "key", "keys", "--version", "-v", "--help", "-h"))) {
+        _xsf_run_cli $RemainingArgs
+        return
+    }
 
     $history = Get-History -Count 15
     $last = ""
@@ -57,7 +66,19 @@ function _xsf_exec {
     if ($Offline) { $extraArgs += "--offline" }
     if ($Ai) { $extraArgs += "--ai" }
     if ($Auto) { $extraArgs += "--auto" }
+    if ($DryRun) { $extraArgs += "--dry-run" }
+    if ($NoCache) { $extraArgs += "--no-cache" }
+    if ($RemainingArgs) {
+        foreach ($arg in $RemainingArgs) {
+            if ($arg -in @("--offline", "--ai", "--auto", "--dry-run", "--no-cache")) {
+                if ($extraArgs -notcontains $arg) {
+                    $extraArgs += $arg
+                }
+            }
+        }
+    }
 
+    $tmp = $null
     if ($Rerun) {
         Write-Host "This will re-run the previous command to capture stderr:" -ForegroundColor Yellow
         Write-Host "  $last" -ForegroundColor Cyan
@@ -71,21 +92,24 @@ function _xsf_exec {
         }
     }
 
-    $cliCallArgs = @($last, "--shell", "powershell") + $extraArgs
-    $fixed = _xsf_run_cli $cliCallArgs
+    try {
+        $cliCallArgs = @($last, "--shell", "powershell") + $extraArgs
+        $fixed = _xsf_run_cli $cliCallArgs
 
-    if ($LASTEXITCODE -eq 0 -and $fixed) {
-        Invoke-Expression $fixed
+        if ($LASTEXITCODE -eq 0 -and $fixed) {
+            $cmdToRun = ($fixed -join "`n").Trim()
+            if ($cmdToRun.Length -gt 0 -and $cmdToRun.Length -lt 4096) {
+                Invoke-Expression $cmdToRun
+            }
+        }
+    } finally {
+        if ($tmp -and (Test-Path $tmp)) {
+            Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
-function xsf {
-    if ($args.Count -gt 0 -and ($args[0] -in @("init", "config", "ui", "--version", "-v", "--help", "-h"))) {
-        _xsf_run_cli $args
-        return
-    }
-    _xsf_exec @args
-}
+function xsf   { _xsf_exec @args }
 function xefix { _xsf_exec @args }
 function xeeee { _xsf_exec @args }
 function fuxx  { _xsf_exec @args }

@@ -69,15 +69,18 @@ class CerebrasProvider(BaseProvider):
             try:
                 with urllib.request.urlopen(req, timeout=8) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
-                    break
+                self.model = model
+                break
             except urllib.error.HTTPError as e:
                 detail = e.read().decode("utf-8", errors="ignore")[:250]
                 last_error = ProviderError(f"Cerebras API error ({e.code}): {detail}", e.code)
-                if e.code in (400, 404, 429, 503):
+                if e.code in (400, 404, 429, 500, 502, 503, 504):
                     continue
                 raise last_error
             except urllib.error.URLError as e:
                 raise ProviderError(f"Network error connecting to Cerebras: {e.reason}")
+            except ProviderError:
+                raise
             except Exception as e:
                 raise ProviderError(f"Cerebras request failed: {e}")
         else:

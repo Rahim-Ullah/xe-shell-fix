@@ -73,6 +73,14 @@ class TestHelpParser(unittest.TestCase):
         self.assertEqual(fixed, "git push origin main --force")
         self.assertIn("--force", exp)
 
+    def test_rejects_path_separators_in_binary_name(self):
+        from xsf.offline.help_parser import get_command_flags
+        self.assertEqual(get_command_flags("./script.sh"), [])
+        self.assertEqual(get_command_flags("../bin/tool"), [])
+        self.assertEqual(get_command_flags("path/to/bin"), [])
+        self.assertEqual(get_command_flags("path\\to\\bin"), [])
+        self.assertEqual(get_command_flags(""), [])
+
 
 if __name__ == "__main__":
     unittest.main()

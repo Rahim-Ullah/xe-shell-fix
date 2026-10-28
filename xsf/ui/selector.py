@@ -10,10 +10,21 @@ Features:
 """
 import difflib
 import os
+import re
 import sys
 from typing import List, Optional, Tuple
 
 Candidate = Tuple[str, float, str, str]  # (fixed_command, confidence, explanation, source)
+
+_RE_ESCAPE = re.compile(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+def _sanitize_terminal_string(text: str) -> str:
+    """Strips raw ANSI escape sequences and non-printable control characters from text."""
+    if not text:
+        return ""
+    cleaned = _RE_ESCAPE.sub("", text)
+    return "".join(ch for ch in cleaned if ch in ("\n", "\t") or ord(ch) >= 32)
 
 
 def render_diff(old_tokens: List[str], new_tokens: List[str]) -> str:
@@ -117,19 +128,21 @@ def _render_menu(candidates: List[Candidate], selected_idx: int) -> int:
 
     for i, (cmd, conf, exp, src) in enumerate(candidates):
         is_sel = (i == selected_idx)
+        clean_cmd = _sanitize_terminal_string(cmd)
+        clean_exp = _sanitize_terminal_string(exp)
         cursor = "\033[1;32m>\033[0m" if is_sel else " "
         badge = "\033[32m[OFFLINE]\033[0m" if src == "offline" else "\033[36m[AI]\033[0m"
         pct = f"{int(conf * 100)}%"
 
         if is_sel:
-            line = f"  [{i + 1}] {cursor} \033[1;4m{cmd}\033[0m  \033[90m({pct} {badge})\033[0m\n"
+            line = f"  [{i + 1}] {cursor} \033[1;4m{clean_cmd}\033[0m  \033[90m({pct} {badge})\033[0m\n"
         else:
-            line = f"  [{i + 1}] {cursor} \033[1m{cmd}\033[0m  \033[90m({pct} {badge})\033[0m\n"
+            line = f"  [{i + 1}] {cursor} \033[1m{clean_cmd}\033[0m  \033[90m({pct} {badge})\033[0m\n"
         sys.stderr.write(line)
         lines_count += 1
 
-        if exp and is_sel:
-            _safe_write(sys.stderr, f"      \033[90m\u2514\u2500 {exp}\033[0m\n", f"      \033[90m\\-- {exp}\033[0m\n")
+        if clean_exp and is_sel:
+            _safe_write(sys.stderr, f"      \033[90m\u2514\u2500 {clean_exp}\033[0m\n", f"      \033[90m\\-- {clean_exp}\033[0m\n")
             lines_count += 1
 
     _safe_write(

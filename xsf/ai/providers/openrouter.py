@@ -61,7 +61,7 @@ class OpenRouterProvider(BaseProvider):
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {self.api_key.strip()}",
-                    "HTTP-Referer": "https://github.com/xe-shell-fix/xsf",
+                    "HTTP-Referer": "https://github.com/rahim-ullah/xe-shell-fix",
                     "X-Title": "xe-shell-fix",
                 },
                 method="POST",
@@ -70,15 +70,18 @@ class OpenRouterProvider(BaseProvider):
             try:
                 with urllib.request.urlopen(req, timeout=14) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
-                    break
+                self.model = model
+                break
             except urllib.error.HTTPError as e:
                 detail = e.read().decode("utf-8", errors="ignore")[:250]
                 last_error = ProviderError(f"OpenRouter API error ({e.code}): {detail}", e.code)
-                if e.code in (400, 404, 429, 503):
+                if e.code in (400, 404, 429, 500, 502, 503, 504):
                     continue
                 raise last_error
             except urllib.error.URLError as e:
                 raise ProviderError(f"Network error connecting to OpenRouter: {e.reason}")
+            except ProviderError:
+                raise
             except Exception as e:
                 raise ProviderError(f"OpenRouter request failed: {e}")
         else:

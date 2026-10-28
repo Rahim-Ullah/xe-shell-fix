@@ -75,6 +75,7 @@ class FunctionRuleAdapter(Rule):
 
 # Module-level cache to prevent repeated disk I/O on unchanged files
 _CACHE: Dict[str, Any] = {
+    "dir": "",
     "mtime": 0.0,
     "rules": [],
 }
@@ -99,13 +100,21 @@ def load_user_rules(rules_dir: Optional[Path] = None, force_reload: bool = False
     if not target_dir.exists() or not target_dir.is_dir():
         return []
 
-    # Check directory mtime for fast cache hit (<0.1ms)
+    # Compute composite mtime across directory and its .py files for accurate cache invalidation (<0.1ms)
     try:
-        current_mtime = target_dir.stat().st_mtime
+        dir_key = str(target_dir.resolve())
+        mtimes = [target_dir.stat().st_mtime]
+        for p in target_dir.glob("*.py"):
+            try:
+                mtimes.append(p.stat().st_mtime)
+            except OSError:
+                pass
+        current_mtime = max(mtimes)
     except Exception:
+        dir_key = str(target_dir)
         current_mtime = 0.0
 
-    if not force_reload and _CACHE["rules"] and current_mtime == _CACHE["mtime"]:
+    if not force_reload and _CACHE["dir"] == dir_key and current_mtime == _CACHE["mtime"] and current_mtime > 0:
         return _CACHE["rules"]
 
     # Secure permissions on user rules directory cross-platform
@@ -119,6 +128,19 @@ def load_user_rules(rules_dir: Optional[Path] = None, force_reload: bool = False
     for file_path in sorted(target_dir.glob("*.py")):
         if file_path.name.startswith(("_", ".")):
             continue
+
+        # Security: Skip files not owned by current user or writable by others on POSIX
+        if os.name != "nt":
+            try:
+                st = file_path.stat()
+                if hasattr(os, "getuid") and st.st_uid != os.getuid() and st.st_uid != 0:
+                    sys.stderr.write(f"xsf: [WARNING] Skipping user rule {file_path.name}: not owned by current user.\n")
+                    continue
+                if st.st_mode & 0o002:
+                    sys.stderr.write(f"xsf: [WARNING] Skipping user rule {file_path.name}: insecure permissions (world-writable).\n")
+                    continue
+            except OSError:
+                continue
 
         module_name = f"xsf_user_rule_{file_path.stem}"
         try:
@@ -164,6 +186,7 @@ def load_user_rules(rules_dir: Optional[Path] = None, force_reload: bool = False
             if os.environ.get("XSF_DEBUG"):
                 sys.stderr.write(f"xsf: error loading custom rule '{file_path.name}': {e}\n")
 
+    _CACHE["dir"] = dir_key
     _CACHE["mtime"] = current_mtime
     _CACHE["rules"] = loaded_rules
     return loaded_rules

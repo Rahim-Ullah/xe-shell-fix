@@ -4,7 +4,6 @@ xsf.core.command - Canonical Command data representation.
 from dataclasses import dataclass, field
 import os
 import shlex
-import sys
 from typing import List, Optional
 
 
@@ -12,7 +11,7 @@ from typing import List, Optional
 class Command:
     raw: str
     tokens: List[str] = field(default_factory=list)
-    shell: str = "bash"  # powershell, bash, zsh, fish
+    shell: str = "bash"  # powershell, pwsh, bash, gitbash, zsh, fish
     stderr_text: str = ""
     exit_code: Optional[int] = None
     cwd: str = field(default_factory=lambda: os.getcwd())
@@ -24,9 +23,20 @@ class Command:
 
     @staticmethod
     def _tokenize(cmd_str: str, shell: str) -> List[str]:
-        is_posix = shell in ("bash", "zsh", "fish") or (os.name != "nt")
+        is_powershell = shell.lower() in ("powershell", "pwsh")
         try:
-            return shlex.split(cmd_str, posix=is_posix)
+            if is_powershell:
+                # posix=False preserves Windows backslashes (C:\path\file);
+                # strip matching outer quotes that shlex(posix=False) leaves attached.
+                raw_toks = shlex.split(cmd_str, posix=False)
+                cleaned: List[str] = []
+                for t in raw_toks:
+                    if len(t) >= 2 and ((t[0] == '"' and t[-1] == '"') or (t[0] == "'" and t[-1] == "'")):
+                        cleaned.append(t[1:-1])
+                    else:
+                        cleaned.append(t)
+                return cleaned
+            return shlex.split(cmd_str, posix=True)
         except ValueError:
             return cmd_str.split()
 
@@ -44,11 +54,11 @@ class Command:
             return ""
         
         # PowerShell and POSIX handle quotes differently
-        if self.shell == "powershell":
+        if self.shell.lower() in ("powershell", "pwsh"):
             res = []
             for t in toks:
-                if any(c in t for c in " \t$`()|;&<>"):
-                    escaped = t.replace("`", "``").replace('"', '`"')
+                if any(c in t for c in " \t$`()|;&<>\"'"):
+                    escaped = t.replace("`", "``").replace('"', '`"').replace("$", "`$")
                     res.append(f'"{escaped}"')
                 else:
                     res.append(t)

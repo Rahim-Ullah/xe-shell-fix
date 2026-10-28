@@ -3,11 +3,13 @@ xsf.cli - Main Command-Line Interface.
 
 Usage:
   xsf "<failed_command>" [options]
-  xsf init <powershell|bash|zsh|fish>
+  xsf setup
+  xsf power <on|hybrid|offline|ai|off|status|reset>
+  xsf key <list|set|remove|test|guide>
   xsf config [--list]
+  xsf init <powershell|pwsh|bash|gitbash|zsh|fish>
 """
 import argparse
-import os
 from pathlib import Path
 import sys
 
@@ -16,19 +18,25 @@ from xsf.config import load_config
 from xsf.core.command import Command
 from xsf.core.engine import Engine
 from xsf.hooks import get_hook_script, SUPPORTED_SHELLS
-from xsf.ui.config_tui import run_interactive_tui, print_status
+from xsf.ui.config_tui import (
+    handle_key_cli,
+    handle_power_cli,
+    print_status,
+    run_interactive_tui,
+    run_setup_wizard,
+)
 
 
 def main() -> int:
     argv = sys.argv[1:]
 
-    # Quick flag checks
-    if "-v" in argv or "--version" in argv:
+    # Quick standalone flag checks
+    if len(argv) == 1 and argv[0] in ("-v", "--version"):
         print(f"xsf {__version__}")
         return 0
 
     # Dedicated subcommands
-    if argv and argv[0] in ("init", "config", "ui"):
+    if argv and argv[0] in ("init", "config", "ui", "setup", "power", "key", "keys"):
         sub = argv[0]
         if sub == "init":
             if len(argv) < 2 or argv[1] not in SUPPORTED_SHELLS:
@@ -42,6 +50,15 @@ def main() -> int:
             except Exception as e:
                 sys.stderr.write(f"xsf: {e}\n")
                 return 1
+
+        elif sub == "setup":
+            return run_setup_wizard()
+
+        elif sub == "power":
+            return handle_power_cli(argv[1:])
+
+        elif sub in ("key", "keys"):
+            return handle_key_cli(argv[1:])
 
         elif sub in ("config", "ui"):
             cfg = load_config()
@@ -69,13 +86,15 @@ def main() -> int:
 
     raw_cmd = (args.command or "").strip()
     if not raw_cmd:
-        sys.stderr.write("xsf: no command provided to fix. Run 'xsf --help' for usage.\n")
+        sys.stderr.write("xsf: no command provided to fix. Run 'xsf setup', 'xsf config', or 'xsf --help'.\n")
         return 1
 
     stderr_content = ""
-    if args.stderr_file and os.path.exists(args.stderr_file):
+    if args.stderr_file:
         try:
-            stderr_content = Path(args.stderr_file).read_text(encoding="utf-8", errors="ignore")
+            p = Path(args.stderr_file)
+            if p.is_file() and p.stat().st_size <= 1024 * 1024:
+                stderr_content = p.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             pass
 

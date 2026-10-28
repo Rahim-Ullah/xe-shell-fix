@@ -15,7 +15,8 @@
 </p>
 
 <p align="center">
-  <a href="HOWTOUSE.md"><b>📖 Read the Complete User Guide & Installation Manual (HOWTOUSE.md)</b></a> •
+  <a href="HOWTOUSE.md"><b>📖 User & Ubuntu/Windows Installation Guide (HOWTOUSE.md)</b></a> •
+  <a href="guides/README.md"><b>🔑 API Key & Power Switch Guides (guides/)</b></a> •
   <a href="CONTRIBUTING.md"><b>🤝 Contributing & Plugin Guide</b></a> •
   <a href="CHANGELOG.md"><b>📝 Release Notes</b></a>
 </p>
@@ -137,11 +138,13 @@ All tiers are benchmarked against real terminal workloads to ensure zero noticea
 * **Inference Speed**: ~200ms token generation latency.
 * **Daily Quota**: **14,400 Requests Per Day (RPD)**, **30 Requests Per Minute (RPM)**.
 
-### 3. Automatic Cascade & Circuit-Breaking
-If any provider returns an HTTP status code indicating rate limits (`429`), temporary outages (`503`), or model deprecations (`404`/`400`), the `AIRouter` immediately:
-1. Tries the provider's configured internal fallback models.
-2. If exhausted, cascades seamlessly to the next configured provider in sequence without failing the user request.
-3. Caches successful responses in `~/.shellfix/ai_cache.json` for 7 days, eliminating redundant API calls.
+### 3. Automatic Cascade, Multi-Key Rotation & Circuit-Breaking
+Every user attaches **their own personal free API keys** via `xsf setup` or `xsf key set` (see [**`guides/README.md`**](guides/README.md)). If any provider returns an HTTP status code indicating rate limits (`429`), payment/quota exhaustion (`402`), temporary outages (`503`), or model deprecations (`404`/`400`), the `AIRouter` and `ProviderHealthTracker`:
+1. Place the throttled key into a timed **circuit-breaker cooldown** (`~/.shellfix/provider_health.json`) so subsequent commands never stall.
+2. Rotate automatically to any comma-separated **backup key** configured for that provider, or try internal fallback models.
+3. Cascade seamlessly to the next configured provider in sequence without failing the user request.
+4. Allow instant mode switching via the **Power Switch** (`xsf power offline`, `xsf power hybrid`, `xsf power ai`, `xsf power off`).
+5. Cache successful responses in `~/.shellfix/ai_cache.json` for 7 days, eliminating redundant API calls.
 
 ---
 
@@ -195,6 +198,8 @@ xe-shell-fix/
 ├── LICENSE                            # MIT License
 ├── README.md                          # Technical architecture & engine documentation
 ├── HOWTOUSE.md                        # Complete step-by-step user & operator guide
+├── FUTURE_FEATURES.md                 # Architectural roadmap & upcoming feature blueprints
+├── guides/                            # Step-by-step BYOK API key & Power Switch guides
 ├── CONTRIBUTING.md                    # Developer guide & offline rule plugin tutorial
 ├── CHANGELOG.md                       # Version changelog
 ├── pyproject.toml                     # PEP 621 build configuration & console entrypoints

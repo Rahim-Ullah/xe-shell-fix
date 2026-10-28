@@ -76,6 +76,13 @@ def fuzzy_match_command(cmd: Command) -> Optional[Tuple[str, float, str]]:
         confidence = 0.95
         notes.append(f"alias '{prog}' → '{canonical}'")
 
+    # 1b. Correct uppercase/mixed-case slips on known commands (e.g. GIT status → git status, LS -la → ls -la)
+    elif prog != prog_key and (prog_key in TOOL_NAMES or prog_key in KNOWN_SAFE_COMMANDS):
+        fixed[0] = prog_key
+        changed = True
+        confidence = 0.98
+        notes.append(f"'{prog}' → '{prog_key}'")
+
     # 2. Correct program name if still unrecognized and not a known safe command
     elif prog_key not in TOOL_NAMES and prog_key not in KNOWN_SAFE_COMMANDS:
         match = difflib.get_close_matches(prog_key, ALL_TARGET_PROGRAMS, n=1, cutoff=0.62)

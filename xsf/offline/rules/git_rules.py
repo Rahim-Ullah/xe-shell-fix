@@ -1,8 +1,10 @@
 """
 xsf.offline.rules.git_rules - Comprehensive Git heuristics and error fixes.
 """
+import difflib
+from pathlib import Path
 import re
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 from xsf.core.command import Command
 from xsf.offline.rules.base import Rule
@@ -148,4 +150,110 @@ class GitPullRebaseRule(Rule):
 
     def get_new_command(self, cmd: Command) -> Optional[Tuple[str, float, str]]:
         return "git pull --rebase", 0.9, "Pull with rebase to resolve divergent branches"
+
+
+def _get_git_branches(cwd: Optional[str] = None) -> List[str]:
+    """Retrieves local Git branch names by inspecting .git refs directly."""
+    curr = Path(cwd) if cwd else Path.cwd()
+    git_dir = None
+    for p in [curr] + list(curr.parents):
+        dot_git = p / ".git"
+        if dot_git.is_dir():
+            git_dir = dot_git
+            break
+        elif dot_git.is_file():
+            try:
+                content = dot_git.read_text(encoding="utf-8").strip()
+                if content.startswith("gitdir:"):
+                    target = content.split("gitdir:", 1)[1].strip()
+                    git_dir = (p / target).resolve()
+                    break
+            except Exception:
+                pass
+    if not git_dir or not git_dir.is_dir():
+        return []
+
+    branches = set()
+    heads_dir = git_dir / "refs" / "heads"
+    if heads_dir.is_dir():
+        for ref in heads_dir.rglob("*"):
+            if ref.is_file():
+                rel = ref.relative_to(heads_dir)
+                branches.add(str(rel).replace("\\", "/"))
+
+    packed = git_dir / "packed-refs"
+    if packed.is_file():
+        try:
+            for line in packed.read_text(encoding="utf-8", errors="ignore").splitlines():
+                line = line.strip()
+                if line.startswith("#") or line.startswith("^"):
+                    continue
+                parts = line.split()
+                if len(parts) >= 2 and parts[1].startswith("refs/heads/"):
+                    branches.add(parts[1][len("refs/heads/"):])
+        except Exception:
+            pass
+
+    return sorted(list(branches))
+
+
+class GitBranchFuzzyRule(Rule):
+    """
+    Auto-resolves mistyped Git branch names against local branches.
+    Matches checkout, switch, merge, rebase on pathspec/invalid ref errors.
+    """
+    name = "git_branch_fuzzy"
+    priority = 8
+    requires_output = True
+
+    def match(self, cmd: Command) -> bool:
+        if len(cmd.tokens) < 3 or cmd.tokens[0].lower() != "git":
+            return False
+        sub = cmd.tokens[1].lower()
+        if sub not in ("checkout", "switch", "branch", "merge", "rebase", "log", "diff"):
+            return False
+        if not cmd.stderr_text:
+            return False
+        err = cmd.stderr_text.lower()
+        signals = (
+            "did not match any file(s) known to git",
+            "invalid reference:",
+            "is not a valid branch name",
+            "cannot do hard reset with paths",
+            "not a valid object name",
+        )
+        if not any(s in err for s in signals):
+            return False
+
+        branches = _get_git_branches(cmd.cwd)
+        if not branches:
+            return False
+
+        for tok in cmd.tokens[2:]:
+            if tok.startswith("-"):
+                continue
+            matches = difflib.get_close_matches(tok, branches, n=1, cutoff=0.55)
+            if matches and matches[0] != tok:
+                return True
+        return False
+
+    def get_candidates(self, cmd: Command) -> List[Tuple[str, float, str]]:
+        branches = _get_git_branches(cmd.cwd)
+        if not branches:
+            return []
+
+        candidates = []
+        new_tokens = list(cmd.tokens)
+        for i in range(2, len(new_tokens)):
+            tok = new_tokens[i]
+            if tok.startswith("-"):
+                continue
+            matches = difflib.get_close_matches(tok, branches, n=1, cutoff=0.55)
+            if matches and matches[0] != tok:
+                matched_branch = matches[0]
+                new_tokens[i] = matched_branch
+                fixed = cmd.quote_join(new_tokens)
+                candidates.append((fixed, 0.92, f"Corrected branch '{tok}' -> '{matched_branch}'"))
+                break
+        return candidates
 

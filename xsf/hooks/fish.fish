@@ -8,7 +8,7 @@ function _xsf_run_cli
     if type -q xsf
         command xsf $argv
     else if test -n "$_XSF_INIT_PYTHON" -a -x "$_XSF_INIT_PYTHON"
-        $_XSF_INIT_PYTHON -m xsf.cli $argv
+        "$_XSF_INIT_PYTHON" -m xsf.cli $argv
     else if type -q python; and python -c "import xsf" 2>/dev/null
         python -m xsf.cli $argv
     else if type -q python3; and python3 -c "import xsf" 2>/dev/null
@@ -21,7 +21,20 @@ function _xsf_run_cli
 end
 
 function _xsf_exec
-    set -l last_cmd $history[1]
+    if count $argv > 0; and contains -- $argv[1] init config ui setup power key keys --version -v --help -h
+        _xsf_run_cli $argv
+        return $status
+    end
+
+    set -l last_cmd ""
+    for item in $history[1..15]
+        set -l trimmed (string trim -- "$item")
+        if test -n "$trimmed"; and not string match -qr '^(xsf|xefix|xeeee|fuxx)(\s|$)' -- "$trimmed"
+            set last_cmd "$trimmed"
+            break
+        end
+    end
+
     if test -z "$last_cmd"
         echo "xsf: no previous command found" >&2
         return 1
@@ -36,13 +49,7 @@ function _xsf_exec
     end
 end
 
-function xsf
-    if count $argv > 0; and contains -- $argv[1] init config ui --version -v --help -h
-        _xsf_run_cli $argv
-        return $status
-    end
-    _xsf_exec $argv
-end
+function xsf;   _xsf_exec $argv; end
 function xefix; _xsf_exec $argv; end
 function xeeee; _xsf_exec $argv; end
 function fuxx;  _xsf_exec $argv; end

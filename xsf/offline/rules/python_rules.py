@@ -46,15 +46,16 @@ class VenvActivationRule(Rule):
 
     def get_new_command(self, cmd: Command) -> Optional[Tuple[str, float, str]]:
         shell = cmd.shell.lower()
+        base_dir = Path(cmd.cwd) if cmd.cwd else Path.cwd()
         # Look for common venv folder names in cwd
         venv_candidates = [".venv", "venv", "env", ".env"]
         venv_dir = ".venv"
         for candidate in venv_candidates:
-            if Path(candidate).is_dir():
+            if (base_dir / candidate).is_dir():
                 venv_dir = candidate
                 break
 
-        if shell == "powershell":
+        if shell in ("powershell", "pwsh"):
             fixed = f".\\{venv_dir}\\Scripts\\Activate.ps1"
             explanation = f"PowerShell activation script for '{venv_dir}'"
         elif shell == "fish":
@@ -62,7 +63,7 @@ class VenvActivationRule(Rule):
             explanation = f"Fish activation script for '{venv_dir}'"
         else:  # bash, zsh, gitbash
             # On Windows Git Bash, it might be in Scripts
-            if Path(f"{venv_dir}/Scripts/activate").exists():
+            if (base_dir / venv_dir / "Scripts" / "activate").exists():
                 fixed = f"source {venv_dir}/Scripts/activate"
             else:
                 fixed = f"source {venv_dir}/bin/activate"

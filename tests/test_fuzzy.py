@@ -89,6 +89,19 @@ class TestFuzzyMatcher(unittest.TestCase):
                 res = fuzzy_match_command(cmd)
                 self.assertIsNone(res, f"Safe command '{safe}' was wrongly mangled!")
 
+    def test_uppercase_command_slips_fixed(self):
+        cases = [
+            ("GIT status", "git status"),
+            ("LS -la", "ls -la"),
+            ("DOCKER ps", "docker ps"),
+        ]
+        for raw, expected in cases:
+            with self.subTest(raw=raw):
+                cmd = Command(raw=raw, shell="bash")
+                res = fuzzy_match_command(cmd)
+                self.assertIsNotNone(res)
+                self.assertEqual(res[0], expected)
+
 
 if __name__ == "__main__":
     unittest.main()

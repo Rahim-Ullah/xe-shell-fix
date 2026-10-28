@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-10-28
+
+### ⚡ Engine Power Switch, BYOK Key Management & Full Security Audit
+
+#### Added
+- **Engine Power Switch (`xsf power`)**:
+  - Instant CLI and TUI mode switching across `hybrid` (Offline + Cloud AI fallback), `offline` (100% local heuristics, zero network/quota usage), `ai` (direct AI diagnosis), and `off` (engine paused).
+  - Live status dashboard (`xsf power status`) and one-command circuit-breaker cooldown reset (`xsf power reset`).
+- **Guided Post-Install Setup Wizard (`xsf setup`)**:
+  - Interactive 3-step onboarding flow configuring Power Mode, personal API keys with live connectivity verification, and automatic shell profile hook installation (`~/.bashrc`, `~/.zshrc`, `config.fish`, PowerShell `$PROFILE`).
+- **Robust Key & Account Manager (`xsf key`)**:
+  - Direct CLI key management (`xsf key set <provider> <key> [--test]`, `xsf key remove <provider>`, `xsf key list`, `xsf key guide`).
+  - Automatic key sanitization (strips accidental surrounding quotes, whitespace, and `Bearer ` prefixes) and provider-specific format validation.
+  - **Multi-Account Backup Key Rotation**: Attach comma-separated keys per provider (`xsf key set groq "key1,key2"`) for automatic failover on rate limits.
+- **Persistent Circuit-Breaker & Rate-Limit Guard (`ProviderHealthTracker`)**:
+  - Tracks per-key health in `~/.shellfix/provider_health.json` (with `0600` permissions), placing rate-limited (`429`), quota-exhausted (`402`), or unauthorized (`401`/`403`) keys into timed cooldowns so terminal commands never lag on throttled endpoints.
+  - Quiet failover mode suppresses noisy transient error walls during provider cascades.
+- **Dedicated Step-by-Step Key & Power Switch Guides (`guides/`)**:
+  - Added modular guides in `guides/` covering Groq LPU, Google Gemini, OpenRouter, Cerebras, xAI Grok, OpenAI, Local Ollama, and Power Switch / Multi-Key Rotation.
+- **Architectural Roadmap (`FUTURE_FEATURES.md`)**:
+  - Added 10 detailed module blueprints for upcoming capabilities.
+
+#### Security & Audit Fixes
+- **Chained/Piped Command Inspection in Safety Gate (`safety.py`)**:
+  - Split commands across shell operators (`&&`, `||`, `;`, `|`, `&`, `\n`, `$(`, `` ` ``) so `_has_rm_danger()` catches recursive/root deletions anywhere in a command chain (e.g. `cd /tmp && rm -rf /`, `sudo -u root rm -rf /`, `env FOO=bar rm -rf /`, `timeout 5 rm -rf /`).
+  - Added `find ... -delete` and `find ... -exec rm` to `DESTRUCTIVE_PATTERNS`.
+- **Universal Terminal Escape Sanitization (`engine.py` & `safety.py`)**:
+  - Stripped raw ANSI/OSC escape sequences from single-candidate outputs, dry-run previews, and destructive warning prompts.
+- **Cross-Platform PowerShell Tokenization & `pwsh` Escaping (`command.py`)**:
+  - Preserved Windows backslashes across all OS hosts when `shell` is `powershell`/`pwsh` and applied `$` subexpression escaping to `pwsh`.
+- **Rule & Hook Hardening**:
+  - Removed real CLI tools (`tac`, `hg`) from `COMMON_SHELL_TYPOS` and added uppercase command normalization (`GIT status` → `git status`).
+  - Promoted `ChmodExecutableRule` priority ahead of generic `FilePermissionDeniedRule`, propagated `cmd.cwd` across all filesystem/Git rules, and fixed in-place file edit cache invalidation in `user_rules.py`.
+
+---
+
+## [1.1.2] - 2026-10-04
+
+### 🛡️ Comprehensive Cyber Security Hardening & Offline Feature Expansion
+
+#### Security Remediations
+- **Subprocess & Path Traversal Isolation (`help_parser.py`)**:
+  - Enforced strict rejection of binary names with path separators (`/` or `\`) or relative scripts (`./script`).
+  - Guarded against Windows current-working-directory (CWD) binary hijacking; binaries are resolved strictly against system PATH.
+  - Hardened flag cache permissions with `secure_config_permissions(CACHE_FILE)`.
+- **Safety Gate Hardening (`safety.py`)**:
+  - Unwrapped execution prefixes (`sudo`, `doas`, `env`, `command`, `nohup`) before inspecting tokens for destructive actions (`sudo rm -rf /` and `/bin/rm -rf /` can no longer bypass safety prompts).
+  - Classified all recursive directory deletions (`rm -r`, `rm -R`, `--recursive`) as destructive, with or without force flags.
+  - Fixed `git clean` flag ordering regex to catch both `-df`, `-fd`, and `-xdf`.
+  - Added Windows `rd /s /q`, container mass wipes (`docker system prune -a`, `docker rm -f`), and disk wipes (`wipefs`, `shred`, `dd of=... if=...`).
+- **PowerShell Hook & Quoting Security (`command.py` & `powershell.ps1`)**:
+  - Escaped dollar signs (`$`) as `` `$ `` in PowerShell double-quoted tokens, preventing subexpression execution inside `Invoke-Expression`.
+  - Handled multi-line string joining cleanly in PowerShell hooks and wrapped temporary stderr files in `try...finally` with `Remove-Item` cleanup.
+- **Sensitive Credential Redaction (`ai/router.py`)**:
+  - Implemented automated secret scrubbing (`redact_sensitive_data`) masking Bearer tokens, API keys, AWS credentials, and URI passwords before cloud dispatch or local caching.
+- **Config & TOML Parser Hardening (`config.py`)**:
+  - Stripped inline comments while preserving quoted strings in fallback TOML parser, preventing boolean misparsing.
+  - Applied JSON string escaping to prevent TOML serialization injection in `save_config`.
+  - Ensured `~/.shellfix` directory is secured with `0700` alongside configuration files.
+- **CLI Flag Interception Fix (`cli.py`)**:
+  - Resolved `-v`/`--version` interception bug that previously hijacked failed commands containing `-v` (e.g. `grep -v`, `curl -v`).
+  - Validated and capped `--stderr-file` size to 1MB to prevent memory exhaustion.
+- **Terminal UI Sanitization (`ui/selector.py`)**:
+  - Stripped raw ANSI and OSC escape sequences from candidate strings and descriptions before terminal rendering.
+
+#### New Offline Features
+- **Fuzzy Path & Case-Insensitive Path Auto-Correction (`path_rules.py`)**:
+  - Automatically heals misspelled or mis-cased file and directory paths in commands (`cat`, `python`, `ls`, `vim`, `git add`) by inspecting real filesystem entries via `difflib` and case-insensitive matching (<2ms execution).
+- **Git Branch Fuzzy Auto-Resolver (`git_rules.py`)**:
+  - Resolves mistyped Git branch names in `git checkout`, `git switch`, `git merge`, and `git rebase` against local Git references (`.git/refs/heads` and `.git/packed-refs`).
+
+#### Humanized User Experience
+- **Informative & Actionable Diagnostics**:
+  - Transformed silent or generic fallback failures into clear, informative diagnostic hints (explaining offline mode, suggesting `xsf config` for free AI keys, or providing issue tracker links).
+  - Added explicit cancellation notices when a command is declined.
+  - Fixed false-positive abort in `check_already_resolved` for flagged commands (`rm -rf ...`).
+
+---
+
 ## [1.1.1] - 2026-09-22
 
 ### 📚 Documentation Architecture & Engine Hardening

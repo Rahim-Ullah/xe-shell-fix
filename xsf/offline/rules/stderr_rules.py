@@ -18,11 +18,13 @@ class NoSuchFileOrDirRule(Rule):
 
     def match(self, cmd: Command) -> bool:
         err = cmd.stderr_text.lower()
-        return "no such file or directory" in err and cmd.tokens and cmd.tokens[0] == "cd" and len(cmd.tokens) > 1
+        return "no such file or directory" in err and bool(cmd.tokens) and cmd.tokens[0] == "cd" and len(cmd.tokens) > 1
 
     def get_new_command(self, cmd: Command) -> Optional[Tuple[str, float, str]]:
         dir_name = cmd.tokens[1]
-        return f"mkdir -p {dir_name} && cd {dir_name}", 0.85, f"Directory '{dir_name}' doesn't exist. Create and enter it."
+        mkdir_cmd = cmd.quote_join(["mkdir", "-p", dir_name])
+        cd_cmd = cmd.quote_join(["cd", dir_name])
+        return f"{mkdir_cmd} && {cd_cmd}", 0.85, f"Directory '{dir_name}' doesn't exist. Create and enter it."
 
 
 class PythonModuleNotFoundRule(Rule):
@@ -92,6 +94,8 @@ class PortInUseRule(Rule):
         match = re.search(r"(?:port\s+|:)(\d{2,5})", cmd.stderr_text, re.IGNORECASE)
         if match:
             port = match.group(1)
+            if cmd.shell.lower() in ("powershell", "pwsh"):
+                return f"Get-NetTCPConnection -LocalPort {port}", 0.80, f"Port {port} is in use. Inspect active connections on port {port}."
             return f"lsof -i :{port}", 0.80, f"Port {port} is in use. Find the process with 'lsof -i :{port}'."
         return None
 
@@ -114,7 +118,7 @@ class FilePermissionDeniedRule(Rule):
     priority = 16
 
     def match(self, cmd: Command) -> bool:
-        if cmd.shell in ("powershell",):
+        if cmd.shell.lower() in ("powershell", "pwsh"):
             return False
         err = cmd.stderr_text.lower()
         if not cmd.tokens:

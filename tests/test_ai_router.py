@@ -109,6 +109,43 @@ class TestAIRouterRouting(unittest.TestCase):
         self.assertEqual(result[0], "fixed cmd")
         self.assertIn("Gemini", result[2])
 
+    @patch("xsf.ai.router.AICache")
+    @patch("xsf.ai.router.ProviderHealthTracker.save")
+    def test_multi_key_rotation_on_rate_limit(self, _mock_save, mock_cache_cls):
+        """If primary key returns 429, router rotates to backup key on the same provider."""
+        from xsf.ai.router import ProviderHealthTracker
+        ProviderHealthTracker.reset()
+        mock_cache_cls.get.return_value = None
+
+        cfg = {
+            "general": dict(DEFAULT_CONFIG["general"]),
+            "ai": dict(DEFAULT_CONFIG["ai"]),
+            "local_llm": dict(DEFAULT_CONFIG["local_llm"]),
+        }
+        cfg["ai"]["groq_api_key"] = "gsk_key_one_12345,gsk_key_two_67890"
+        router = AIRouter(cfg)
+
+        prov = router.providers["groq"]
+        call_keys = []
+
+        def fake_fix(cmd):
+            call_keys.append(prov.api_key)
+            if prov.api_key == "gsk_key_one_12345":
+                raise ProviderError("Rate limit exceeded", 429)
+            return ("git status", "Fixed via backup key", 0.95)
+
+        prov.fix = fake_fix
+        res = router.route(Command(raw="gti statsu"), skip_cache=True)
+        self.assertIsNotNone(res)
+        self.assertEqual(res[0], "git status")
+        self.assertEqual(call_keys, ["gsk_key_one_12345", "gsk_key_two_67890"])
+        # Key one should now be in cooldown, key two should be healthy
+        cooling1, _ = ProviderHealthTracker.is_cooling_down("groq", "gsk_key_one_12345")
+        cooling2, _ = ProviderHealthTracker.is_cooling_down("groq", "gsk_key_two_67890")
+        self.assertTrue(cooling1)
+        self.assertFalse(cooling2)
+        ProviderHealthTracker.reset()
+
 
 class TestAIProviderBase(unittest.TestCase):
     """Tests for BaseProvider.parse_json_response()."""
@@ -140,6 +177,8 @@ class TestAIProviderBase(unittest.TestCase):
         raw = '{"fixed_command": "", "explanation": "No fix", "confidence": 0.0, "destructive": false}'
         cmd, exp, conf, dest = BaseProvider.parse_json_response(raw)
         self.assertEqual(cmd, "")
+        self.assertAlmostEqual(conf, 0.0)
+        self.assertFalse(dest)
 
     def test_parse_missing_fields_defaults(self):
         from xsf.ai.providers.base import BaseProvider
@@ -149,6 +188,18 @@ class TestAIProviderBase(unittest.TestCase):
         self.assertEqual(exp, "")
         self.assertAlmostEqual(conf, 0.5)
         self.assertFalse(dest)
+
+    def test_redact_sensitive_data(self):
+        from xsf.ai.router import redact_sensitive_data
+        sample_bearer = "curl -H 'Authorization: Bearer abcdef1234567890xyz' https://api.com"
+        self.assertIn("[REDACTED_TOKEN]", redact_sensitive_data(sample_bearer))
+        self.assertNotIn("abcdef1234567890xyz", redact_sensitive_data(sample_bearer))
+
+        sample_uri = "psql postgresql://admin:secretpassword123@db.internal:5432/main"
+        self.assertIn("postgresql://admin:[REDACTED]@db.internal:5432/main", redact_sensitive_data(sample_uri))
+
+        sample_gh = "git clone https://ghp_012345678901234567890123456789012345@github.com/org/repo"
+        self.assertIn("[REDACTED_GH_TOKEN]", redact_sensitive_data(sample_gh))
 
 
 if __name__ == "__main__":

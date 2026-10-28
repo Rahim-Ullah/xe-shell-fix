@@ -61,48 +61,44 @@ cd xe-shell-fix
 
 ---
 
-## 3. Installation Walkthrough
+## 3. Installation Walkthrough (Ubuntu / Linux, macOS & Windows)
 
-### Method A: User Installation (Recommended for Normal Use)
-Installs `xsf` into your current Python user environment:
+### 🐧 Method A: Ubuntu / Debian / Linux (Recommended — Isolated Virtual Environment)
+Modern Ubuntu (23.04 / 24.04+) enforces PEP 668 externally-managed environments. Installing into a dedicated `.venv` and running `xsf setup` takes 30 seconds:
+
 ```bash
-pip install .
-```
+# 1. Clone the repository
+mkdir -p ~/tools && cd ~/tools
+git clone https://github.com/rahim-ullah/xe-shell-fix.git
+cd xe-shell-fix
 
-### Method B: Editable Developer Mode (Recommended for Contributors)
-Any changes you make to the source code take effect immediately without reinstalling:
-```bash
-pip install -e .
-
-# Or with testing tools (pytest, etc.):
-pip install -e ".[dev]"
-```
-
-### Method C: Isolated Virtual Environment
-If you want to keep your base environment completely pristine:
-```bash
-# Windows
-python -m venv .venv
-.venv\Scripts\activate
-pip install -e .
-
-# Linux / macOS
+# 2. Create a virtual environment & install xsf
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
-```
 
-### Verifying the Installation
-Check that the `xsf` command-line executable is available:
-```bash
-xsf --version
-# Output: xsf 1.1.0
-
-xsf --help
+# 3. Launch the interactive Setup Wizard (attaches your keys & installs the Bash/Zsh hook!)
+xsf setup
 ```
 
 > [!TIP]
-> If `xsf: command not found` appears, your Python `Scripts` folder (Windows) or `~/.local/bin` (Linux/macOS) is not in your system `PATH`. Add it or run through `python -m xsf.cli`.
+> Because `xsf init` pins the exact `.venv` Python interpreter inside your `~/.bashrc` / `~/.zshrc` hook (`_XSF_INIT_PYTHON`), **`xsf` will continue to work in every new terminal window even when `.venv` is not activated!**
+
+### 🪟 Method B: Windows / Editable Install
+```powershell
+git clone https://github.com/rahim-ullah/xe-shell-fix.git
+cd xe-shell-fix
+pip install -e .
+xsf setup
+```
+
+### Verifying the Installation
+```bash
+xsf --version
+# Output: xsf 1.2.0
+
+xsf power status
+```
 
 ---
 
@@ -226,12 +222,12 @@ xsf --dry-run "kuebctl get pods"
 xsf --no-cache "broken command"
 ```
 
-### D. Built-in Shell Aliases
-`xsf` registers convenient shorthand aliases in your shell profile:
-* `xefix` — Repaired alias for fixing the last command.
-* `xsffix` — Direct alias for `xsf`.
-* `fixcmd` — Semantic alias.
-* `pls` — Inspired by privilege escalation / quick fix convention.
+### D. Built-in Shell Trigger Aliases
+`xsf` registers 4 convenient trigger aliases in your shell profile:
+* `xsf` — Primary command and subcommand runner (`xsf`, `xsf setup`, `xsf power`, `xsf key`, `xsf config`).
+* `xefix` — Quick alias to repair the previous failed command.
+* `xeeee` — Fast single-hand ergonomic alias.
+* `fuxx` — Classic expressive alias.
 
 ### E. 🌟 Superpower: Natural Language & Cross-Shell Commands ("Speak Human")
 
@@ -295,69 +291,56 @@ It intelligently avoids redundantly asking you to re-execute a command that woul
 ---
 
 
-## 6. Configuring AI Engines & API Keys
+## 6. Power Switch, API Keys & Account Management
 
-`xsf` features an interactive terminal UI for managing API keys, selecting models, and testing live provider latency.
+`xsf` uses a **Bring-Your-Own-Key (BYOK)** model so your personal rate limits are 100% yours, backed by a **Power Switch** and automatic **Circuit-Breaker Cooldown Guard**.
 
-### Launch the Config Manager
+👉 **For step-by-step provider walkthroughs, see the dedicated [`guides/`](guides/README.md) folder:**
+* [**01 — Groq LPU Free Key Guide (`gsk_...`)**](guides/01-GROQ-LPU-GUIDE.md)
+* [**02 — Google Gemini Free Key Guide (`AIza...`)**](guides/02-GOOGLE-GEMINI-GUIDE.md)
+* [**03 — OpenRouter & Cerebras Guide**](guides/03-OPENROUTER-AND-CEREBRAS-GUIDE.md)
+* [**04 — Grok, OpenAI & Local Ollama Guide**](guides/04-GROK-OPENAI-AND-LOCAL-OLLAMA.md)
+* [**05 — Power Switch & Multi-Key Rotation Guide**](guides/05-POWER-SWITCH-AND-KEY-ROTATION.md)
+
+### A. First-Run Guided Setup Wizard
+Run the interactive wizard to choose your Power Mode, paste your keys, test connectivity, and auto-install your shell hook:
+```bash
+xsf setup
+```
+
+### B. The `xsf power` Switch
+Switch engine modes anytime with zero config editing:
+```bash
+xsf power status    # View current Power Mode, masked keys, and cooldown health
+xsf power hybrid    # Default: Instant Offline (<5ms) + Cloud AI fallback
+xsf power offline   # 100% Offline heuristics only (0 network calls, saves 100% quota)
+xsf power ai        # Force direct AI diagnosis
+xsf power off       # Pause xsf engine
+xsf power reset     # Clear all provider rate-limit (429/402) cooldowns
+```
+
+### C. Fast CLI Key & Account Switching (`xsf key`)
+Switch accounts, attach comma-separated backup keys, or remove keys directly from the CLI:
+```bash
+# Attach or switch a single key (auto-strips quotes/spaces and tests live connection)
+xsf key set groq gsk_YOUR_KEY_HERE --test
+xsf key set gemini AIzaSyYOUR_KEY_HERE --test
+
+# Attach primary + backup key for automatic rotation on 429 rate limits
+xsf key set groq "gsk_ACCOUNT_1,gsk_ACCOUNT_2" --test
+
+# View step-by-step portal URLs & free quotas in terminal
+xsf key guide
+
+# Remove a key
+xsf key remove groq
+```
+
+### D. Interactive Control Center (`xsf config`)
 ```bash
 xsf config
 ```
-
-```text
-============================================================
-              xsf — Configuration Manager
-============================================================
-Config file: C:\Users\<user>\.shellfix\config.toml
-
-  1. Enable / Disable AI Fallback [Current: True]
-  2. Set Gemini API Key           [Current: configured]
-  3. Set Groq API Key             [Current: configured]
-  4. Set Cerebras API Key         [Current: not set]
-  5. Set OpenRouter API Key       [Current: not set]
-  6. Set Grok API Key (xAI)       [Current: not set]
-  7. Set OpenAI / Custom Key      [Current: not set]
-  8. Configure Local LLM (Ollama) [Current: disabled]
-  9. Test All Provider Connections
-  0. Save and Exit
-```
-
-### Recommended Multi-Provider Setup
-For the ultimate resilient experience, configure both **Gemini** and **Groq**:
-1. **Google Gemini (Free Tier)**:
-   - Get key: [Google AI Studio](https://aistudio.google.com/)
-   - Quota: **1,500 requests per day** for free.
-   - Model: `gemini-flash-latest` (with automatic fallback to `gemini-3.6-flash`).
-2. **Groq LPU (Ultra-Fast)**:
-   - Get key: [Groq Console](https://console.groq.com/)
-   - Speed: Wafer-scale LPU inference in **~200ms**.
-   - Model: `qwen/qwen3.8-27b` (with fallback to `llama-3.1-8b-instant`).
-
-### Direct File Configuration
-Config settings are stored in `~/.shellfix/config.toml`:
-```toml
-[core]
-auto_approve_safe = false
-require_confirm_destructive = true
-history_size = 50
-
-[offline]
-enabled = true
-fuzzy_threshold = 0.65
-
-[ai]
-enabled = true
-gemini_api_key = "AIzaSy..."
-groq_api_key = "gsk_..."
-cerebras_api_key = ""
-openrouter_api_key = ""
-cascade = ["groq", "cerebras", "gemini", "openrouter"]
-
-[local_llm]
-enabled = false
-host = "http://localhost:11434"
-model = "qwen2.5-coder:1.5b"
-```
+Provides an interactive TUI to toggle the Power Switch (`[P]`), update or rotate keys (`[1]-[6]`), toggle Local Ollama (`[7]`), test all connections (`[9]`), and reset circuit-breaker cooldowns (`[R]`).
 
 ---
 

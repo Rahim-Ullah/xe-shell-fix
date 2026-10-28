@@ -209,6 +209,63 @@ class TestEngineExecuteFlow(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         mock_out.write.assert_called_with("git status\n")
 
+    @patch("xsf.core.engine.Engine.find_candidates")
+    @patch("xsf.ui.selector.choose_candidate")
+    def test_multi_candidate_dry_run_never_blocks_on_selector(self, mock_choose, mock_find):
+        """Dry run with multiple candidates must never block on interactive choose_candidate."""
+        mock_find.return_value = [
+            ("git status", 0.95, "Fix status", "offline"),
+            ("git stash", 0.80, "Stash changes", "offline"),
+        ]
+        cmd = Command(raw="giit stas", shell="bash")
+        with patch("sys.stderr"), patch("sys.stdout"):
+            exit_code = self.engine.execute_flow(cmd, dry_run=True)
+        self.assertEqual(exit_code, 1)
+        mock_choose.assert_not_called()
+
+    @patch("xsf.core.engine.Engine.find_candidates")
+    @patch("xsf.ui.selector.choose_candidate")
+    def test_multi_candidate_auto_approve_safe_skips_selector(self, mock_choose, mock_find):
+        """--auto with multiple candidates selects safe top candidate without blocking."""
+        mock_find.return_value = [
+            ("git status", 0.95, "Fix status", "offline"),
+            ("git stash", 0.80, "Stash changes", "offline"),
+        ]
+        cmd = Command(raw="giit stas", shell="bash")
+        with patch("sys.stdout") as mock_out:
+            exit_code = self.engine.execute_flow(cmd, auto_approve=True)
+        self.assertEqual(exit_code, 0)
+        mock_choose.assert_not_called()
+        mock_out.write.assert_called_with("git status\n")
+
+    def test_power_mode_off_pauses_engine(self):
+        cfg = {
+            "general": {"power_mode": "off", "help_introspection": False, "auto_approve_safe": False},
+            "ai": dict(DEFAULT_CONFIG["ai"]),
+            "local_llm": dict(DEFAULT_CONFIG["local_llm"]),
+        }
+        engine = Engine(cfg)
+        cmd = Command(raw="cdd Downloads", shell="bash")
+        with patch("sys.stderr"):
+            exit_code = engine.execute_flow(cmd)
+        self.assertEqual(exit_code, 1)
+        self.assertIsNone(engine.find_fix(cmd))
+
+    @patch("xsf.core.engine.run_offline_engine")
+    def test_power_mode_offline_skips_ai(self, mock_offline):
+        mock_offline.return_value = None
+        cfg = {
+            "general": {"power_mode": "offline", "help_introspection": False, "auto_approve_safe": False},
+            "ai": dict(DEFAULT_CONFIG["ai"]),
+            "local_llm": dict(DEFAULT_CONFIG["local_llm"]),
+        }
+        engine = Engine(cfg)
+        cmd = Command(raw="unknown_cmd", shell="bash")
+        with patch.object(engine.ai_router, "route") as mock_ai:
+            res = engine.find_fix(cmd)
+            mock_ai.assert_not_called()
+        self.assertIsNone(res)
+
 
 if __name__ == "__main__":
     unittest.main()

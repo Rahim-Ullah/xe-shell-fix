@@ -6,36 +6,125 @@ Every proposed command from EVERY tier (static rules, dynamic help flag fixes,
 local LLM, or cloud AI) MUST pass through this module before reaching the shell.
 """
 import re
+import shlex
 import sys
-from typing import Tuple
+from typing import List, Tuple
+
+_EXEC_WRAPPERS = {
+    "sudo", "doas", "env", "command", "nohup", "busybox",
+    "winpty", "nice", "ionice", "time", "timeout", "xargs", "pkexec",
+}
+_WRAPPER_FLAGS_WITH_ARG = {"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-n", "-c", "-s", "-k"}
+_RE_SHELL_SPLIT = re.compile(r"(?:&&|\|\||[;|&`\n]|\$\()")
+_RE_ESCAPE = re.compile(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+def _sanitize_display(text: str) -> str:
+    """Strips raw ANSI/OSC escape sequences and control characters before terminal display."""
+    if not text:
+        return ""
+    cleaned = _RE_ESCAPE.sub("", text)
+    return "".join(ch for ch in cleaned if ch in ("\n", "\t") or ord(ch) >= 32)
+
+
+def _unwrap_command_tokens(tokens: List[str]) -> List[str]:
+    """Strips outer execution wrappers (sudo, doas, env, xargs, etc.), env vars, and flags to reach actual command."""
+    idx = 0
+    while idx < len(tokens):
+        tok = tokens[idx]
+        # Skip inline environment variable assignments (e.g. FOO=bar)
+        if "=" in tok and not tok.startswith("-") and tok.split("=", 1)[0].isidentifier():
+            idx += 1
+            continue
+
+        base = tok.lower()
+        base_name = base.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+        if base_name in _EXEC_WRAPPERS:
+            idx += 1
+            while idx < len(tokens):
+                curr = tokens[idx]
+                if "=" in curr and not curr.startswith("-") and curr.split("=", 1)[0].isidentifier():
+                    idx += 1
+                    continue
+                if curr.startswith("-"):
+                    if curr in _WRAPPER_FLAGS_WITH_ARG and idx + 1 < len(tokens):
+                        idx += 2
+                    else:
+                        idx += 1
+                else:
+                    break
+            # `timeout` takes a duration argument before the command
+            if base_name == "timeout" and idx < len(tokens):
+                idx += 1
+        else:
+            break
+    return tokens[idx:] if idx < len(tokens) else tokens
+
+
+def _segment_has_rm_danger(segment: str) -> bool:
+    """Checks if a single command segment invokes rm with recursive or root-wildcard flags."""
+    try:
+        raw_tokens = shlex.split(segment, posix=True)
+    except ValueError:
+        raw_tokens = segment.split()
+    if not raw_tokens:
+        return False
+    tokens = _unwrap_command_tokens(raw_tokens)
+    if not tokens:
+        return False
+    prog = tokens[0].lower().rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+    if prog != "rm":
+        return False
+    args = tokens[1:]
+    # Any recursive deletion is destructive, with or without force flag
+    has_recursive = any(
+        t.lower() in ("--recursive", "-r", "-r/")
+        or ("r" in t.lower() and t.startswith("-") and not t.startswith("--"))
+        for t in args
+    )
+    if has_recursive:
+        return True
+    # Force deletion or wildcard deletion at root
+    has_force = any(
+        t.lower() == "--force"
+        or ("f" in t.lower() and t.startswith("-") and not t.startswith("--"))
+        for t in args
+    )
+    has_root_target = any(t in ("/", "/*", "~", "~/*") for t in args)
+    return has_force and has_root_target
+
 
 def _has_rm_danger(cmd: str) -> bool:
-    """Checks if an rm command has both recursive and force flags."""
-    tokens = cmd.split()
-    if not tokens or tokens[0].lower() != 'rm':
+    """Checks if any sub-command in a (potentially chained/piped) command has dangerous rm flags."""
+    if not cmd:
         return False
-    has_recursive = any(t in ('--recursive', '-R') or ('r' in t and t.startswith('-') and not t.startswith('--')) for t in tokens[1:])
-    has_force = any(t in ('--force',) or ('f' in t and t.startswith('-') and not t.startswith('--')) for t in tokens[1:])
-    return has_recursive and has_force
+    for segment in _RE_SHELL_SPLIT.split(cmd):
+        segment = segment.strip().rstrip(")")
+        if segment and _segment_has_rm_danger(segment):
+            return True
+    return False
 
 
 # Patterns that permanently modify or destroy filesystem, git history, or database state.
 DESTRUCTIVE_PATTERNS = [
     # Filesystem destruction (POSIX + Windows)
-    re.compile(r"\brmdir\b.*\/[sS]\b", re.IGNORECASE),
+    re.compile(r"\b(rd|rmdir)\b.*\/[sS]\b", re.IGNORECASE),
     re.compile(r"\bdel\b.*\/[sS]\b", re.IGNORECASE),
     re.compile(r"\bRemove-Item\b.*-(Recurse|Force)", re.IGNORECASE),
     re.compile(r"--no-preserve-root", re.IGNORECASE),
     re.compile(r"\bformat\s+[a-zA-Z]:", re.IGNORECASE),
+    re.compile(r"\bfind\b.*\s-delete\b", re.IGNORECASE),
+    re.compile(r"\bfind\b.*-exec\s+(?:\S*/)?rm\b", re.IGNORECASE),
     # Raw disk & block manipulation
-    re.compile(r"\bmkfs\b", re.IGNORECASE),
-    re.compile(r"\bdd\s+if=", re.IGNORECASE),
+    re.compile(r"\b(wipefs|shred|srm)\b", re.IGNORECASE),
+    re.compile(r"\bmkfs(\.[a-z0-9]+)?\b", re.IGNORECASE),
+    re.compile(r"\bdd\b.*\b(of=|if=)", re.IGNORECASE),
     re.compile(r"\b(fdisk|parted|diskpart)\b", re.IGNORECASE),
-    re.compile(r">\s*/dev/(sd[a-z]|nvme\d|hd[a-z])", re.IGNORECASE),
+    re.compile(r">\s*/dev/(sd[a-z]|nvme\d|hd[a-z]|vd[a-z]|xvd[a-z]|mmcblk\d)", re.IGNORECASE),
     # Git destructive commands
     re.compile(r"\bgit\s+push\b.*(\s--force\b|\s-f\b|\s\+[a-zA-Z0-9_\-]+)", re.IGNORECASE),
     re.compile(r"\bgit\s+reset\s+--hard\b", re.IGNORECASE),
-    re.compile(r"\bgit\s+clean\s+-[a-zA-Z]*f[a-zA-Z]*d\b", re.IGNORECASE),
+    re.compile(r"\bgit\s+clean\b.*(-[a-zA-Z]*[fd][a-zA-Z]*[fd]|\b-f\b.*\b-d\b|\b-d\b.*\b-f\b)", re.IGNORECASE),
     re.compile(r"\bgit\s+branch\s+-[dD]\b", re.IGNORECASE),
     # System permissions & ownership
     re.compile(r"\bchmod\s+-[rR]\s+777\s+/", re.IGNORECASE),
@@ -53,6 +142,9 @@ DESTRUCTIVE_PATTERNS = [
     re.compile(r"\bpulumi\s+destroy\b", re.IGNORECASE),
     re.compile(r"\bkubectl\s+delete\s+namespace\b", re.IGNORECASE),
     re.compile(r"\bkubectl\s+delete\s+--all\b", re.IGNORECASE),
+    re.compile(r"\bdocker\s+system\s+prune\b.*(-a|--all)", re.IGNORECASE),
+    re.compile(r"\bdocker\s+(container\s+)?rm\b.*(-f|--force)", re.IGNORECASE),
+    re.compile(r"\bpodman\s+system\s+prune\b.*(-a|--all)", re.IGNORECASE),
     # File truncation to zero bytes
     re.compile(r"\btruncate\s+-s\s+0\b", re.IGNORECASE),
     # Additional DB mass-drop variants
@@ -83,7 +175,7 @@ class SafetyGuard:
         for pat in DESTRUCTIVE_PATTERNS:
             match = pat.search(cmd)
             if match:
-                return True, f"Matches dangerous pattern: '{match.group(0)}'"
+                return True, f"Matches dangerous pattern: '{_sanitize_display(match.group(0))}'"
         return False, "Safe"
 
     @staticmethod
@@ -95,9 +187,10 @@ class SafetyGuard:
         - dry_run only prints and returns False.
         """
         destructive, reason = SafetyGuard.inspect(cmd)
+        safe_cmd_display = _sanitize_display(cmd)
 
         if dry_run:
-            sys.stderr.write(f"  [DRY-RUN] Would execute: {cmd}\n")
+            sys.stderr.write(f"  [DRY-RUN] Would execute: {safe_cmd_display}\n")
             if destructive:
                 sys.stderr.write(f"  [WARNING] Command is flagged DESTRUCTIVE ({reason})\n")
             return False

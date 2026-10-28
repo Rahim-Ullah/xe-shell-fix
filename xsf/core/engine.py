@@ -35,8 +35,12 @@ def check_already_resolved(cmd: Command) -> Optional[str]:
 
     # 1. Removal/Deletion of already nonexistent file or directory
     if prog in ("rm", "del", "delete", "unlink", "rmdir", "remove-item"):
-        target = cmd.tokens[1] if len(cmd.tokens) > 1 else ""
+        # Extract the actual target file/dir operand, skipping option flags
+        target_tokens = [t for t in cmd.tokens[1:] if not t.startswith("-") and not (prog in ("del", "rmdir") and t.startswith("/"))]
+        target = target_tokens[0] if target_tokens else ""
         target_clean = target.strip('\'"')
+        if not target_clean:
+            return None
 
         # Check if stderr explicitly indicated the file/path was missing
         has_err_signal = any(p in err for p in (
@@ -49,7 +53,10 @@ def check_already_resolved(cmd: Command) -> Optional[str]:
         if target_clean and not any(c in target_clean for c in "*?"):
             from pathlib import Path
             try:
-                target_missing_on_disk = not Path(target_clean).exists()
+                p_target = Path(target_clean)
+                if not p_target.is_absolute() and cmd.cwd:
+                    p_target = Path(cmd.cwd) / p_target
+                target_missing_on_disk = not p_target.exists()
             except Exception:
                 target_missing_on_disk = False
 
@@ -93,8 +100,10 @@ class Engine:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.ai_router = AIRouter(config)
-        self.allow_help = config.get("general", {}).get("help_introspection", True)
-        self.auto_approve_safe = config.get("general", {}).get("auto_approve_safe", False)
+        gen = config.get("general", {})
+        self.allow_help = gen.get("help_introspection", True)
+        self.auto_approve_safe = gen.get("auto_approve_safe", False)
+        self.power_mode = gen.get("power_mode", "hybrid").lower()
 
     def find_candidates(
         self,
@@ -109,6 +118,13 @@ class Engine:
         """
         candidates: List[Tuple[str, float, str, str]] = []
         seen = set()
+
+        if self.power_mode == "off":
+            return []
+        if self.power_mode == "offline" and not ai_only:
+            offline_only = True
+        elif self.power_mode == "ai_only" and not offline_only:
+            ai_only = True
 
         # 1. AI-Only path (if explicitly requested)
         if ai_only:
@@ -162,6 +178,13 @@ class Engine:
         Finds the best corrected command across tiers.
         Returns: (fixed_command, confidence, explanation, tier_source) or None
         """
+        if self.power_mode == "off":
+            return None
+        if self.power_mode == "offline" and not ai_only:
+            offline_only = True
+        elif self.power_mode == "ai_only" and not offline_only:
+            ai_only = True
+
         # 1. AI-Only path (if explicitly requested)
         if ai_only:
             ai_result = self.ai_router.route(cmd, skip_cache=skip_cache)
@@ -225,6 +248,11 @@ class Engine:
           1 = no fix found or declined
           2 = destructive fix declined
         """
+        # 0. Check Power Switch state
+        if self.power_mode == "off":
+            sys.stderr.write("xsf: engine is paused (Power Switch: OFF). Run `xsf power on` to resume.\n")
+            return 1
+
         # 1. Check if the command failed because the target is ALREADY in the desired state
         already_resolved_msg = check_already_resolved(cmd)
         if already_resolved_msg:
@@ -239,26 +267,55 @@ class Engine:
         )
 
         if not candidates:
-            sys.stderr.write("xsf: no fix found for previous command\n")
+            sys.stderr.write("xsf: no automatic fix found for previous command\n")
+            if offline_only or self.power_mode == "offline":
+                sys.stderr.write("     [Hint] Offline-Only mode active. Run `xsf power hybrid` or pass `--ai` to enable AI diagnosis.\n")
+            elif not self.ai_router or not any(p.is_configured() for p in self.ai_router.providers.values()):
+                sys.stderr.write("     [Hint] No personal AI key attached. Run `xsf setup` or `xsf key guide` to connect free Groq/Gemini keys.\n")
+            else:
+                sys.stderr.write("     [Hint] Try `xsf --ai` to query AI providers directly, or `xsf power status` to check key limits.\n")
             return 1
+
+        from xsf.ui.selector import _sanitize_terminal_string
 
         if len(candidates) == 1:
             chosen = candidates[0]
             fixed_cmd, confidence, explanation, source = chosen
+            safe_cmd = _sanitize_terminal_string(fixed_cmd)
+            safe_exp = _sanitize_terminal_string(explanation)
             # Display suggestion to user on STDERR (keeping stdout clean for eval)
             sys.stderr.write("\n")
             badge = "\033[1;32m[OFFLINE]\033[0m" if source == "offline" else "\033[1;36m[AI]\033[0m"
-            sys.stderr.write(f"  {badge} \033[1m{fixed_cmd}\033[0m\n")
-            if explanation:
+            sys.stderr.write(f"  {badge} \033[1m{safe_cmd}\033[0m\n")
+            if safe_exp:
                 try:
-                    sys.stderr.write(f"  \033[90m\u2514\u2500 {explanation} (confidence: {int(confidence * 100)}%)\033[0m\n")
+                    sys.stderr.write(f"  \033[90m\u2514\u2500 {safe_exp} (confidence: {int(confidence * 100)}%)\033[0m\n")
                 except UnicodeEncodeError:
-                    sys.stderr.write(f"  \033[90m\\-- {explanation} (confidence: {int(confidence * 100)}%)\033[0m\n")
+                    sys.stderr.write(f"  \033[90m\\-- {safe_exp} (confidence: {int(confidence * 100)}%)\033[0m\n")
             # Single candidate: pass through safety gate (Enter/y for safe, full "yes" for destructive)
             auto_flag = auto_approve or (self.auto_approve_safe and confidence >= 0.95)
             approved = SafetyGuard.confirm(fixed_cmd, auto_approve=auto_flag, dry_run=dry_run)
         else:
-            # Multi-candidate: user navigates with arrow keys and presses Enter to select.
+            # Multi-candidate handling:
+            # 1. Dry-run never blocks on interactive selection
+            if dry_run:
+                top_cmd, top_conf, top_exp, top_src = candidates[0]
+                is_destruct, destruct_reason = SafetyGuard.inspect(top_cmd)
+                sys.stderr.write(f"  [DRY-RUN] Would execute: {_sanitize_terminal_string(top_cmd)}\n")
+                if is_destruct:
+                    sys.stderr.write(f"  [WARNING] Flagged DESTRUCTIVE ({destruct_reason})\n")
+                return 2 if is_destruct else 1
+
+            # 2. Auto-approve safe high-confidence primary candidate without blocking
+            top_cmd, top_conf, top_exp, top_src = candidates[0]
+            auto_flag = auto_approve or (self.auto_approve_safe and top_conf >= 0.95)
+            top_is_destruct, _ = SafetyGuard.inspect(top_cmd)
+            if auto_flag and not top_is_destruct:
+                sys.stdout.write(top_cmd + "\n")
+                sys.stdout.flush()
+                return 0
+
+            # 3. Interactive selection: user navigates with arrow keys and presses Enter to select.
             # The selection itself IS confirmation for safe commands — no redundant double-prompt.
             from xsf.ui.selector import choose_candidate
             chosen = choose_candidate(candidates)
@@ -267,12 +324,6 @@ class Engine:
             fixed_cmd, confidence, explanation, source = chosen
 
             is_destruct, destruct_reason = SafetyGuard.inspect(fixed_cmd)
-
-            if dry_run:
-                sys.stderr.write(f"  [DRY-RUN] Would execute: {fixed_cmd}\n")
-                if is_destruct:
-                    sys.stderr.write(f"  [WARNING] Flagged DESTRUCTIVE ({destruct_reason})\n")
-                return 1
 
             if is_destruct:
                 # Destructive: always require explicit "yes" even after arrow-key selection
@@ -300,4 +351,6 @@ class Engine:
             return 0
         else:
             is_destruct, _ = SafetyGuard.inspect(fixed_cmd)
+            if not dry_run:
+                sys.stderr.write("  \033[90mExecution cancelled.\033[0m\n")
             return 2 if is_destruct else 1

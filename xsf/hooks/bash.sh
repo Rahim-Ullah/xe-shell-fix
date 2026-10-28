@@ -52,10 +52,12 @@ _xsf_exec() {
     }
 
     # If called with subcommands or flags, delegate to runner
-    if [ "$1" = "init" ] || [ "$1" = "config" ] || [ "$1" = "ui" ] || [ "$1" = "--version" ] || [ "$1" = "-v" ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-        _xsf_runner "$@"
-        return $?
-    fi
+    case "$1" in
+        init|config|ui|setup|power|key|keys|--version|-v|--help|-h)
+            _xsf_runner "$@"
+            return $?
+            ;;
+    esac
 
     local last_cmd
     last_cmd=$(fc -ln -15 2>/dev/null | grep -vE '^[[:space:]]*(xsf|xefix|xeeee|fuxx)([[:space:]]|$)' | tail -n 1 | sed 's/^[[:space:]]*//')

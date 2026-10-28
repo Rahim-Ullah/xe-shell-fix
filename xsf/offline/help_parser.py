@@ -47,6 +47,8 @@ class HelpCache:
         try:
             CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
             CACHE_FILE.write_text(json.dumps(cls._data, indent=2), encoding="utf-8")
+            from xsf.config import secure_config_permissions
+            secure_config_permissions(CACHE_FILE)
         except Exception:
             pass
 
@@ -99,16 +101,30 @@ def extract_flags_from_text(help_text: str) -> List[str]:
 
 def get_command_flags(binary_name: str, subcommand: Optional[str] = None) -> List[str]:
     """Executes `<cmd> [subcmd] --help` in a quick, timed subprocess with disk caching."""
+    # Defensive: reject empty names, path separators, or control chars
+    if not binary_name or "/" in binary_name or "\\" in binary_name or "\x00" in binary_name:
+        return []
+
     cache_key = f"{binary_name}:{subcommand or ''}"
     cached = HelpCache.get(cache_key)
     if cached is not None:
         return cached
 
     # Verify binary exists on PATH to avoid spawning dead processes
-    if not shutil.which(binary_name):
+    resolved = shutil.which(binary_name)
+    if not resolved:
         return []
 
-    cmd_args = [binary_name]
+    # Security: Never execute binaries resolved from the current working directory
+    try:
+        resolved_path = Path(resolved).resolve()
+        cwd_path = Path.cwd().resolve()
+        if resolved_path == cwd_path or cwd_path in resolved_path.parents:
+            return []
+    except Exception:
+        return []
+
+    cmd_args = [resolved]
     if subcommand and not subcommand.startswith("-"):
         cmd_args.append(subcommand)
     cmd_args.append("--help")

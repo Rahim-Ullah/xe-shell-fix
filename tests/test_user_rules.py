@@ -87,6 +87,29 @@ requires_output = False
         rules = load_user_rules(rules_dir=self.rules_dir, force_reload=True)
         self.assertEqual(rules, [])
 
+    def test_in_place_file_edit_invalidates_cache(self):
+        rule_file = self.rules_dir / "dyn_rule.py"
+        rule_file.write_text(
+            "def match(cmd):\n    return cmd.raw == 'foo'\ndef get_new_command(cmd):\n    return 'bar'\n",
+            encoding="utf-8",
+        )
+        rules1 = load_user_rules(rules_dir=self.rules_dir)
+        self.assertEqual(len(rules1), 1)
+        self.assertEqual(rules1[0].get_candidates(Command(raw="foo"))[0][0], "bar")
+
+        # Update file in-place and bump its mtime slightly
+        import os
+        import time
+        rule_file.write_text(
+            "def match(cmd):\n    return cmd.raw == 'foo'\ndef get_new_command(cmd):\n    return 'baz'\n",
+            encoding="utf-8",
+        )
+        future = time.time() + 5
+        os.utime(rule_file, (future, future))
+
+        rules2 = load_user_rules(rules_dir=self.rules_dir)
+        self.assertEqual(rules2[0].get_candidates(Command(raw="foo"))[0][0], "baz")
+
 
 if __name__ == "__main__":
     unittest.main()

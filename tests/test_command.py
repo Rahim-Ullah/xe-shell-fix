@@ -14,9 +14,16 @@ class TestCommandParsing(unittest.TestCase):
 
     def test_powershell_tokenization(self):
         cmd = Command(raw='git commit -m "hello world"', shell="powershell")
-        self.assertEqual(cmd.tokens[0], "git")
-        self.assertEqual(cmd.tokens[1], "commit")
-        self.assertEqual(cmd.tokens[2], "-m")
+        self.assertEqual(cmd.tokens, ["git", "commit", "-m", "hello world"])
+
+    def test_powershell_preserves_windows_backslashes(self):
+        cmd = Command(raw=r"cat C:\Users\Admin\file.txt", shell="powershell")
+        self.assertEqual(cmd.tokens, ["cat", r"C:\Users\Admin\file.txt"])
+
+    def test_pwsh_quote_join_escapes_dollar(self):
+        cmd = Command(raw="echo test", shell="pwsh")
+        result = cmd.quote_join(["echo", "hello $env:USER world"])
+        self.assertIn("`$env:USER", result)
 
     def test_empty_command(self):
         cmd = Command(raw="", shell="bash")
@@ -75,6 +82,12 @@ class TestCommandQuoting(unittest.TestCase):
         cmd = Command(raw="git status", shell="powershell")
         result = cmd.quote_join(["git", "status"])
         self.assertEqual(result, "git status")
+
+    def test_powershell_escapes_dollar_variable(self):
+        cmd = Command(raw="echo test", shell="powershell")
+        # Token containing $ should have $ escaped as `$ inside double quotes
+        result = cmd.quote_join(["echo", "hello $name world"])
+        self.assertIn('`$name', result)
 
     def test_empty_tokens_quote_join(self):
         cmd = Command(raw="", shell="bash")

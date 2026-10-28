@@ -6,10 +6,12 @@ from typing import List, Optional, Tuple
 from xsf.core.command import Command
 from xsf.offline.rules.base import Rule
 from xsf.offline.rules.python_rules import PythonMissingModuleFlagRule, VenvActivationRule
+from xsf.offline.rules.path_rules import FuzzyPathCorrectionRule
 from xsf.offline.rules.git_rules import (
     GitPushNoUpstreamRule, GitCommitBareMessageRule, GitBranchRenameOrDeleteRule,
     GitDidYouMeanRule, GitDetachedHeadRule, GitStashBeforeCheckoutRule,
     GitMergeConflictRule, GitAddBeforeCommitRule, GitPullRebaseRule,
+    GitBranchFuzzyRule,
 )
 from xsf.offline.rules.package_rules import NpmMissingRunRule, YarnInstallPackageRule, CargoShorthandRule, GoRunBareRule
 from xsf.offline.rules.docker_rules import DockerComposeMigrationRule, DockerRunInteractiveRule
@@ -48,7 +50,10 @@ ALL_RULES: List[Rule] = sorted([
     CommonShellTyposRule(),
     CdDotDotRule(),
     CrossShellNaturalCommandsRule(),
+    # Filesystem & Path healing rules (priority 7)
+    FuzzyPathCorrectionRule(),
     # Git rules (priority 8-15)
+    GitBranchFuzzyRule(),
     GitDidYouMeanRule(),
     GitPushNoUpstreamRule(),
     GitCommitBareMessageRule(),

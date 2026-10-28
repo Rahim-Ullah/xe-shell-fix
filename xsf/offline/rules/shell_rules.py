@@ -13,7 +13,7 @@ COMMON_SHELL_TYPOS = {
     # cd
     "cdd": "cd", "cs": "cd", "dc": "cd", "vd": "cd", "xd": "cd",
     # ls
-    "lss": "ls", "sl": "ls", "lls": "ls", "l": "ls", "ls ": "ls", "LS": "ls", "sls": "ls",
+    "lss": "ls", "sl": "ls", "lls": "ls", "l": "ls", "sls": "ls",
     # clear
     "claer": "clear", "clea": "clear", "cler": "clear", "clera": "clear", "cllear": "clear", "clar": "clear", "lcear": "clear",
     # mkdir
@@ -25,7 +25,7 @@ COMMON_SHELL_TYPOS = {
     # echo
     "ehco": "echo", "eoch": "echo", "ecoh": "echo", "echoo": "echo",
     # cat
-    "cta": "cat", "caat": "cat", "caot": "cat", "ca": "cat", "tac": "cat",
+    "cta": "cat", "caat": "cat", "caot": "cat", "ca": "cat",
     # sudo
     "suod": "sudo", "sudoo": "sudo", "sdo": "sudo", "sduo": "sudo", "usdo": "sudo",
     # touch
@@ -178,7 +178,7 @@ COMMON_SHELL_TYPOS = {
     "tailscal": "tailscale", "tialscale": "tailscale", "tlscale": "tailscale",
     "nrgok": "ngrok", "ngork": "ngrok", "ngrk": "ngrok",
     "9ks": "k9s", "kk9s": "k9s",
-    "ggh": "gh", "hg": "gh",
+    "ggh": "gh",
     "asw": "aws", "wsa": "aws",
     "za": "az",
     "tumx": "tmux", "txmu": "tmux", "tmx": "tmux",
@@ -334,12 +334,13 @@ class RelativeExecutablePrefixRule(Rule):
         first = cmd.tokens[0]
         # Only if not already path prefixed
         if not first.startswith("./") and not first.startswith(".\\") and "/" not in first and "\\" not in first:
-            return Path(first).is_file()
+            base_dir = Path(cmd.cwd) if cmd.cwd else Path.cwd()
+            return (base_dir / first).is_file()
         return False
 
     def get_new_command(self, cmd: Command) -> Optional[Tuple[str, float, str]]:
         first = cmd.tokens[0]
-        prefix = ".\\" if cmd.shell == "powershell" else "./"
+        prefix = ".\\" if cmd.shell in ("powershell", "pwsh") else "./"
         new_tokens = [prefix + first] + cmd.tokens[1:]
         return cmd.quote_join(new_tokens), 0.95, f"Added '{prefix}' prefix to execute local file '{first}'"
 
@@ -347,10 +348,10 @@ class RelativeExecutablePrefixRule(Rule):
 class ChmodExecutableRule(Rule):
     """Detects 'Permission denied' when running a script and suggests adding +x."""
     name = "chmod_plus_x"
-    priority = 30
+    priority = 14
 
     def match(self, cmd: Command) -> bool:
-        if cmd.shell in ("powershell",):
+        if cmd.shell in ("powershell", "pwsh"):
             return False
         if not cmd.tokens:
             return False
@@ -359,13 +360,18 @@ class ChmodExecutableRule(Rule):
             target = cmd.tokens[0]
             if target.startswith("./"):
                 target = target[2:]
-            return Path(target).is_file()
+            base_dir = Path(cmd.cwd) if cmd.cwd else Path.cwd()
+            p_target = Path(target)
+            if not p_target.is_absolute():
+                p_target = base_dir / p_target
+            return p_target.is_file()
         return False
 
     def get_new_command(self, cmd: Command) -> Optional[Tuple[str, float, str]]:
         target = cmd.tokens[0]
         file_path = target[2:] if target.startswith("./") else target
-        return f"chmod +x {file_path} && {cmd.raw}", 0.90, f"Make '{file_path}' executable with 'chmod +x'"
+        chmod_part = cmd.quote_join(["chmod", "+x", file_path])
+        return f"{chmod_part} && {cmd.raw}", 0.90, f"Make '{file_path}' executable with 'chmod +x'"
 
 
 class SudoPrefixRule(Rule):
@@ -374,7 +380,7 @@ class SudoPrefixRule(Rule):
     priority = 40
 
     def match(self, cmd: Command) -> bool:
-        if cmd.shell in ("powershell",):
+        if cmd.shell in ("powershell", "pwsh"):
             return False
         if not cmd.tokens or cmd.tokens[0] == "sudo":
             return False
