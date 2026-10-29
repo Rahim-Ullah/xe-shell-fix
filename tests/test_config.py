@@ -68,6 +68,22 @@ class TestConfig(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(key_str, "gsk_1234567890abcdef")
 
+        # Valid Gemini keys (both AIza and AQ. prefixes supported!)
+        ok_gem1, _, _ = validate_api_key("gemini", "AIzaSy1234567890abcdef")
+        self.assertTrue(ok_gem1)
+        ok_gem2, _, _ = validate_api_key("gemini", "AQ.Ab8RN6Jj_8GZKpc1Xh1Frnqpm")
+        self.assertTrue(ok_gem2)
+
+        # Cross-provider mistake: pasting a Gemini AQ. or AIza key into OpenRouter MUST be rejected!
+        ok_cross, _, msg_cross = validate_api_key("openrouter", "AQ.Ab8RN6Jj_8GZKpc1Xh1Frnqpm")
+        self.assertFalse(ok_cross)
+        self.assertIn("Wrong provider", msg_cross)
+        self.assertIn("Gemini", msg_cross)
+
+        # Wrong prefix for OpenRouter must be rejected (not saved anyway)
+        ok_bad_or, _, _ = validate_api_key("openrouter", "random_unprefixed_key_123456")
+        self.assertFalse(ok_bad_or)
+
         # Too short key rejected
         ok_short, _, _ = validate_api_key("gemini", "short")
         self.assertFalse(ok_short)
@@ -75,6 +91,20 @@ class TestConfig(unittest.TestCase):
         # Unknown provider rejected
         ok_unk, _, _ = validate_api_key("unknown_prov", "some_long_key_123456")
         self.assertFalse(ok_unk)
+
+    def test_no_hardcoded_api_keys_in_repo(self):
+        """Guarantees no real user API keys are accidentally hardcoded in repository source files."""
+        from pathlib import Path
+        import re
+
+        repo_root = Path(__file__).resolve().parent.parent
+        secret_regex = re.compile(
+            r"(gsk_[A-Za-z0-9]{24,}|AIzaSy[A-Za-z0-9_\-]{25,}|AQ\.[A-Za-z0-9_\-]{25,}|sk-or-v1-[A-Za-z0-9]{24,}|csk-[A-Za-z0-9]{24,})"
+        )
+        for py_file in (repo_root / "xsf").rglob("*.py"):
+            content = py_file.read_text(encoding="utf-8", errors="ignore")
+            match = secret_regex.search(content)
+            self.assertIsNone(match, f"Potential real API key found in {py_file}!")
 
     @patch("xsf.ui.config_tui.save_config")
     @patch("xsf.ui.config_tui.load_config")

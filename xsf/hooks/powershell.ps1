@@ -42,26 +42,12 @@ function _xsf_exec {
         [string[]]$RemainingArgs
     )
 
-    if ($RemainingArgs -and $RemainingArgs.Count -gt 0 -and ($RemainingArgs[0] -in @("init", "config", "ui", "setup", "power", "key", "keys", "--version", "-v", "--help", "-h"))) {
+    if ($RemainingArgs -and $RemainingArgs.Count -gt 0 -and ($RemainingArgs[0] -in @("init", "config", "ui", "setup", "power", "key", "keys", "commands", "help", "--commands", "--version", "-v", "--help", "-h"))) {
         _xsf_run_cli $RemainingArgs
         return
     }
 
-    $history = Get-History -Count 15
-    $last = ""
-    for ($i = $history.Count - 1; $i -ge 0; $i--) {
-        $line = $history[$i].CommandLine.Trim()
-        if ($line -and $line -notmatch '^(xsf|xefix|xeeee|fuxx)\b') {
-            $last = $line
-            break
-        }
-    }
-
-    if (-not $last) {
-        Write-Host "xsf: no previous command found" -ForegroundColor Yellow
-        return
-    }
-
+    $posArgs = @()
     $extraArgs = @()
     if ($Offline) { $extraArgs += "--offline" }
     if ($Ai) { $extraArgs += "--ai" }
@@ -74,26 +60,52 @@ function _xsf_exec {
                 if ($extraArgs -notcontains $arg) {
                     $extraArgs += $arg
                 }
+            } elseif (-not $arg.StartsWith("-")) {
+                $posArgs += $arg
             }
         }
+    }
+
+    if ($posArgs.Count -gt 0) {
+        $targetCmd = ($posArgs -join " ").Trim()
+    } else {
+        $history = Get-History -Count 15
+        $last = ""
+        for ($i = $history.Count - 1; $i -ge 0; $i--) {
+            $line = $history[$i].CommandLine.Trim()
+            if ($line -and $line -notmatch '^(xsf|xefix|xeeee|fuxx)\b') {
+                $last = $line
+                break
+            }
+        }
+
+        if (-not $last) {
+            if ($extraArgs -contains "--ai") {
+                _xsf_run_cli (@("--shell", "powershell") + $extraArgs)
+                return
+            }
+            Write-Host "xsf: no previous command found" -ForegroundColor Yellow
+            return
+        }
+        $targetCmd = $last
     }
 
     $tmp = $null
     if ($Rerun) {
         Write-Host "This will re-run the previous command to capture stderr:" -ForegroundColor Yellow
-        Write-Host "  $last" -ForegroundColor Cyan
+        Write-Host "  $targetCmd" -ForegroundColor Cyan
         $ans = Read-Host "Proceed? [y/N]"
         if ($ans -match '^[Yy]') {
             $tmp = [System.IO.Path]::GetTempFileName()
             try {
-                Invoke-Expression $last 2> $tmp | Out-Null
+                Invoke-Expression $targetCmd 2> $tmp | Out-Null
             } catch {}
             $extraArgs += @("--stderr-file", $tmp)
         }
     }
 
     try {
-        $cliCallArgs = @($last, "--shell", "powershell") + $extraArgs
+        $cliCallArgs = @($targetCmd, "--shell", "powershell") + $extraArgs
         $fixed = _xsf_run_cli $cliCallArgs
 
         if ($LASTEXITCODE -eq 0 -and $fixed) {

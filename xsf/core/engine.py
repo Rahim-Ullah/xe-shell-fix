@@ -126,10 +126,10 @@ class Engine:
         elif self.power_mode == "ai_only" and not offline_only:
             ai_only = True
 
-        # 1. AI-Only path (if explicitly requested)
+        # 1. AI-Only path (if explicitly requested via --ai or power_mode=ai_only)
         if ai_only:
             ai_result = self.ai_router.route(cmd, skip_cache=skip_cache)
-            if ai_result and not is_futile_fix(cmd, ai_result[0]):
+            if ai_result and ai_result[0] and ai_result[0].strip():
                 fixed, conf, exp = ai_result
                 return [(fixed, conf, exp, "ai")]
             return []
@@ -185,10 +185,10 @@ class Engine:
         elif self.power_mode == "ai_only" and not offline_only:
             ai_only = True
 
-        # 1. AI-Only path (if explicitly requested)
+        # 1. AI-Only path (if explicitly requested via --ai or power_mode=ai_only)
         if ai_only:
             ai_result = self.ai_router.route(cmd, skip_cache=skip_cache)
-            if ai_result and not is_futile_fix(cmd, ai_result[0]):
+            if ai_result and ai_result[0] and ai_result[0].strip():
                 fixed, conf, exp = ai_result
                 return fixed, conf, exp, "ai"
             return None

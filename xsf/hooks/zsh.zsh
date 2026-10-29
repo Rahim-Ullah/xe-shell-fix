@@ -43,23 +43,49 @@ _xsf_runner() {
 
 _xsf_exec() {
     case "$1" in
-        init|config|ui|setup|power|key|keys|--version|-v|--help|-h)
+        init|config|ui|setup|power|key|keys|commands|help|--commands|--version|-v|--help|-h)
             _xsf_runner "$@"
             return $?
             ;;
     esac
 
-    local last_cmd
-    last_cmd=$(fc -ln -15 2>/dev/null | grep -vE '^[[:space:]]*(xsf|xefix|xeeee|fuxx)([[:space:]]|$)' | tail -n 1 | sed 's/^[[:space:]]*//')
-
-    if [[ -z "$last_cmd" ]]; then
-        print -u2 "xsf: no previous command found"
-        return 1
-    fi
+    local has_pos=0
+    local skip_next=0
+    local has_ai=0
+    for arg in "$@"; do
+        if [ $skip_next -eq 1 ]; then
+            skip_next=0
+            continue
+        fi
+        case "$arg" in
+            --shell|--stderr-file) skip_next=1 ;;
+            --ai) has_ai=1 ;;
+            -*) ;;
+            *) has_pos=1 ;;
+        esac
+    done
 
     local fixed
-    fixed=$(_xsf_runner "$last_cmd" --shell zsh "$@")
-    local status=$?
+    local status
+    if [ $has_pos -eq 1 ]; then
+        fixed=$(_xsf_runner --shell zsh "$@")
+        status=$?
+    else
+        local last_cmd
+        last_cmd=$(fc -ln -15 2>/dev/null | grep -vE '^[[:space:]]*(xsf|xefix|xeeee|fuxx)([[:space:]]|$)' | tail -n 1 | sed 's/^[[:space:]]*//')
+
+        if [[ -z "$last_cmd" ]]; then
+            if [ $has_ai -eq 1 ]; then
+                _xsf_runner --shell zsh "$@"
+                return $?
+            fi
+            print -u2 "xsf: no previous command found"
+            return 1
+        fi
+
+        fixed=$(_xsf_runner "$last_cmd" --shell zsh "$@")
+        status=$?
+    fi
 
     if [ $status -eq 0 ] && [ -n "$fixed" ]; then
         print -s "$fixed"

@@ -51,6 +51,12 @@ coverage.xml
 .DS_Store
 .directory
 
-# Local ShellFix Cache & Logs
+# Local ShellFix Cache, Configs & Keys (Never commit API keys!)
 .shellfix/
+config.toml
+provider_health.json
+ai_cache.json
+*.key
+.env.*
+!.env.example
 *.log

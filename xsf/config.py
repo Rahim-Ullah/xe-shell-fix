@@ -44,13 +44,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
 }
 
-PROVIDER_METADATA: Dict[str, Dict[str, str]] = {
+PROVIDER_METADATA: Dict[str, Dict[str, Any]] = {
     "groq": {
         "title": "Groq LPU (Free Tier — Ultra-Fast ~200ms)",
         "key_field": "groq_api_key",
         "model_field": "groq_model",
         "env_var": "GROQ_API_KEY",
         "prefix_hint": "gsk_",
+        "valid_prefixes": ("gsk_",),
         "portal_url": "https://console.groq.com/keys",
         "free_tier": "14,400 req/day, 30 req/min (Free, no credit card)",
     },
@@ -59,9 +60,10 @@ PROVIDER_METADATA: Dict[str, Dict[str, str]] = {
         "key_field": "gemini_api_key",
         "model_field": "gemini_model",
         "env_var": "GEMINI_API_KEY",
-        "prefix_hint": "AIza",
+        "prefix_hint": "AIza or AQ.",
+        "valid_prefixes": ("AIza", "AQ."),
         "portal_url": "https://aistudio.google.com/app/apikey",
-        "free_tier": "1,500 req/day, 15 req/min (Free via Google AI Studio)",
+        "free_tier": "1,500 req/day, 15 req/min (Free via Google AI Studio / Vertex Express)",
     },
     "openrouter": {
         "title": "OpenRouter (Free Models Tier)",
@@ -69,6 +71,7 @@ PROVIDER_METADATA: Dict[str, Dict[str, str]] = {
         "model_field": "openrouter_model",
         "env_var": "OPENROUTER_API_KEY",
         "prefix_hint": "sk-or-",
+        "valid_prefixes": ("sk-or-",),
         "portal_url": "https://openrouter.ai/keys",
         "free_tier": "Free ':free' models (Llama 3.3 70B, Qwen 2.5 Coder 32B)",
     },
@@ -78,6 +81,7 @@ PROVIDER_METADATA: Dict[str, Dict[str, str]] = {
         "model_field": "cerebras_model",
         "env_var": "CEREBRAS_API_KEY",
         "prefix_hint": "csk-",
+        "valid_prefixes": ("csk-",),
         "portal_url": "https://cloud.cerebras.ai/",
         "free_tier": "High-speed wafer-scale inference tier",
     },
@@ -87,6 +91,7 @@ PROVIDER_METADATA: Dict[str, Dict[str, str]] = {
         "model_field": "grok_model",
         "env_var": "GROK_API_KEY",
         "prefix_hint": "xai-",
+        "valid_prefixes": ("xai-",),
         "portal_url": "https://console.x.ai/",
         "free_tier": "Opt-in paid / credit tier",
     },
@@ -96,10 +101,35 @@ PROVIDER_METADATA: Dict[str, Dict[str, str]] = {
         "model_field": "openai_model",
         "env_var": "OPENAI_API_KEY",
         "prefix_hint": "sk-",
+        "valid_prefixes": ("sk-",),
         "portal_url": "https://platform.openai.com/api-keys",
         "free_tier": "Opt-in paid / custom base_url (DeepSeek, Mistral, etc.)",
     },
 }
+
+
+def detect_key_provider(key: str) -> Optional[str]:
+    """
+    Fingerprints an API key by its prefix to detect cross-provider paste mistakes.
+    Notice that 'sk-or-' (OpenRouter) is checked before generic 'sk-' (OpenAI),
+    and both 'AIza' (Google AI Studio) and 'AQ.' (Google Cloud / Vertex Express) map to 'gemini'.
+    """
+    k = (key or "").strip()
+    if not k:
+        return None
+    if k.startswith("gsk_"):
+        return "groq"
+    if k.startswith(("AIza", "AQ.")):
+        return "gemini"
+    if k.startswith("sk-or-"):
+        return "openrouter"
+    if k.startswith("csk-"):
+        return "cerebras"
+    if k.startswith("xai-"):
+        return "grok"
+    if k.startswith("sk-"):
+        return "openai"
+    return None
 
 
 def sanitize_api_key(raw_key: str) -> str:
@@ -127,9 +157,11 @@ def parse_key_list(raw_key: str) -> List[str]:
     return [k.strip() for k in sanitized.split(",") if k.strip()]
 
 
-def validate_api_key(provider: str, raw_key: str) -> Tuple[bool, str, str]:
+def validate_api_key(provider: str, raw_key: str, allow_custom_prefix: bool = False) -> Tuple[bool, str, str]:
     """
     Validates and sanitizes an API key for the given provider.
+    Strictly rejects keys pasted into the wrong provider slot (e.g. a Gemini 'AQ.' or 'AIza'
+    key pasted into OpenRouter) and keys that do not match the provider's valid prefix family.
     Returns: (is_valid, sanitized_key, message)
     """
     prov = provider.lower().strip()
@@ -142,20 +174,51 @@ def validate_api_key(provider: str, raw_key: str) -> Tuple[bool, str, str]:
 
     keys = parse_key_list(cleaned)
     meta = PROVIDER_METADATA[prov]
-    prefix = meta.get("prefix_hint", "")
-    warnings = []
+    valid_prefixes: Tuple[str, ...] = tuple(meta.get("valid_prefixes", ()))
+    prefix_display = " or ".join(f"'{p}...'" for p in valid_prefixes)
 
     for idx, k in enumerate(keys, 1):
         if len(k) < 12:
-            return False, "", f"Key #{idx} is too short ({len(k)} chars). Please copy the full API key from {meta['portal_url']}."
+            return (
+                False,
+                "",
+                f"Key #{idx} is too short ({len(k)} chars). Cancelled (not saved). "
+                f"Get your key at {meta['portal_url']} and set it anytime via `xsf key set {prov} <key>` or `xsf config`.",
+            )
         if any(ch.isspace() for ch in k):
-            return False, "", f"Key #{idx} contains spaces or control characters. Check your paste."
-        if prefix and not k.startswith(prefix):
-            warnings.append(f"Note: {prov.capitalize()} keys usually start with '{prefix}' (saved anyway).")
+            return (
+                False,
+                "",
+                f"Key #{idx} contains spaces or control characters. Cancelled (not saved). "
+                f"You can retry anytime via `xsf key set {prov} <key>` or `xsf config`.",
+            )
+
+        # 1. Cross-provider mistake detection (e.g. Gemini AQ./AIza key pasted into OpenRouter)
+        detected_owner = detect_key_provider(k)
+        if detected_owner and detected_owner != prov:
+            owner_title = PROVIDER_METADATA[detected_owner]["title"].split("(")[0].strip()
+            return (
+                False,
+                "",
+                f"Wrong provider! That key belongs to {owner_title} ('{k[:4]}...'), not {prov.capitalize()} (expected {prefix_display}).\n"
+                f"    Cancelled (not saved to {prov.capitalize()}). You can attach or change keys anytime using:\n"
+                f"      • xsf key set {detected_owner} <YOUR_KEY>\n"
+                f"      • xsf config",
+            )
+
+        # 2. Target provider prefix enforcement
+        if valid_prefixes and not k.startswith(valid_prefixes):
+            if not (allow_custom_prefix and prov == "openai"):
+                return (
+                    False,
+                    "",
+                    f"Invalid {prov.capitalize()} key format! Expected a key starting with {prefix_display} (got '{k[:4]}...').\n"
+                    f"    Cancelled (not saved). Get a {prov.capitalize()} key at {meta['portal_url']} and attach it anytime via:\n"
+                    f"      • xsf key set {prov} <YOUR_KEY>\n"
+                    f"      • xsf config",
+                )
 
     msg = f"Validated {len(keys)} key(s) for {prov.capitalize()}."
-    if warnings:
-        msg += " " + warnings[0]
     return True, cleaned, msg
 
 

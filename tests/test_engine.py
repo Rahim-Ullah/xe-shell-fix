@@ -266,6 +266,14 @@ class TestEngineExecuteFlow(unittest.TestCase):
             mock_ai.assert_not_called()
         self.assertIsNone(res)
 
+    def test_ai_only_allows_direct_valid_command_explanation(self):
+        """`xsf --ai "whoami"` must return the AI result even when fixed_command equals raw input."""
+        with patch.object(self.engine.ai_router, "route", return_value=("whoami", 0.95, "[Groq] Prints current username")):
+            cmd = Command(raw="whoami", shell="bash")
+            cands = self.engine.find_candidates(cmd, ai_only=True)
+            self.assertEqual(len(cands), 1)
+            self.assertEqual(cands[0][0], "whoami")
+
 
 if __name__ == "__main__":
     unittest.main()

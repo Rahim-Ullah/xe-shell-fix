@@ -28,7 +28,8 @@ SYSTEM_PROMPT = (
     "6. Never explain the JSON — output the JSON object only.\n"
     "7. Adapt paths and syntax to the specified shell (e.g. forward slashes for Git Bash/Bash/Zsh, proper escaping for PowerShell).\n"
     "8. For missing package, runtime, or command-not-found errors, suggest the exact installation, activation, or startup command.\n"
-    "9. Natural Language & Cross-Shell Translation: If the user entered natural English instructions or cross-shell terms (e.g. 'delete file.png', 'rename a b', 'move a b', 'show git log', 'find all pdfs', 'extract archive.zip'), translate their intention into the target shell's idiomatic command with high confidence (0.85-0.98)."
+    "9. Natural Language & Cross-Shell Translation: If the user entered natural English instructions or cross-shell terms (e.g. 'delete file.png', 'rename a b', 'move a b', 'show git log', 'find all pdfs', 'extract archive.zip'), translate their intention into the target shell's idiomatic command with high confidence (0.85-0.98).\n"
+    "10. Direct Question / Command Explanation Mode: If the user asks a question (e.g. 'what is cd command', 'explain chmod 755', 'how to curl json') or inputs an already-valid command to understand it (e.g. 'whoami'), put a directly runnable example or that exact valid command in fixed_command, explain what it does clearly in explanation, and set confidence to 0.95."
 )
 
 

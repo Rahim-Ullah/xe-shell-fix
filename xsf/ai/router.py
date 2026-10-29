@@ -133,11 +133,15 @@ class ProviderHealthTracker:
             # Invalid key: 15-minute cooldown (cleared immediately when user updates key)
             cooldown = now + 900
             status = "invalid_key"
-        elif status_code in (500, 502, 503, 504):
+        elif status_code == 504:
+            # Socket/read timeout: 60-second circuit-breaker cooldown so subsequent commands don't hang
+            cooldown = now + 60
+            status = "timeout"
+        elif status_code in (500, 502, 503):
             cooldown = now + 20
             status = "server_busy"
         else:
-            cooldown = 0
+            cooldown = now + 15
             status = "error"
 
         cls._state[kid] = {
@@ -160,24 +164,43 @@ class ProviderHealthTracker:
 
     @classmethod
     def describe_provider_health(cls, provider: str, raw_key_config: str) -> str:
+        cls.load()
         keys = parse_key_list(raw_key_config)
         if not keys:
             return "\033[90mNot Configured\033[0m"
-        active_count = 0
+        verified_count = 0
+        untested_count = 0
+        invalid_notes = []
         cooling_notes = []
         for idx, k in enumerate(keys, 1):
+            kid = cls._key_id(provider, k)
+            entry = cls._state.get(kid)
+            if not entry:
+                untested_count += 1
+                continue
+            status = entry.get("status", "")
             cooling, detail = cls.is_cooling_down(provider, k)
-            if not cooling:
-                active_count += 1
-            else:
+            if status == "invalid_key":
+                invalid_notes.append(f"key#{idx}: Invalid/401")
+            elif cooling:
                 cooling_notes.append(f"key#{idx}: {detail}")
-        if active_count == len(keys):
-            suffix = f" ({len(keys)} keys ready)" if len(keys) > 1 else " (Ready)"
-            return f"\033[32mHealthy{suffix}\033[0m"
-        elif active_count > 0:
-            return f"\033[33m{active_count}/{len(keys)} Ready ({', '.join(cooling_notes)})\033[0m"
-        else:
-            return f"\033[31mCooling Down ({', '.join(cooling_notes)})\033[0m"
+            elif status == "healthy":
+                verified_count += 1
+            else:
+                untested_count += 1
+
+        if invalid_notes and verified_count == 0 and untested_count == 0:
+            return "\033[31m✗ Invalid Key / Auth Failed (Run 'xsf config')\033[0m"
+        if cooling_notes and verified_count == 0 and untested_count == 0:
+            return f"\033[33m⏳ Cooling Down ({', '.join(cooling_notes)})\033[0m"
+        if verified_count == len(keys):
+            suffix = f" ({len(keys)} keys verified)" if len(keys) > 1 else " (Verified)"
+            return f"\033[32m✓ Healthy{suffix}\033[0m"
+        if verified_count > 0:
+            extra = invalid_notes + cooling_notes
+            note_str = f" [{', '.join(extra)}]" if extra else ""
+            return f"\033[32m✓ {verified_count}/{len(keys)} Verified{note_str}\033[0m"
+        return "\033[36mConfigured (Untested — run 'xsf key test')\033[0m"
 
 
 class AIRouter:
@@ -289,6 +312,8 @@ class AIRouter:
                 )
 
         # 2. Tier 2: Local Ollama if enabled and alive (zero network cost)
+        from xsf.ui.spinner import StatusSpinner
+
         ollama = self.providers.get("ollama")
         if (
             ollama
@@ -297,7 +322,8 @@ class AIRouter:
             and ollama.is_alive()
         ):
             try:
-                fixed, exp, conf = ollama.fix(safe_cmd)
+                with StatusSpinner("⚡ Consulting Local Ollama LLM..."):
+                    fixed, exp, conf = ollama.fix(safe_cmd)
                 if fixed:
                     AICache.put(cache_key, fixed, exp, conf)
                     return fixed, conf, f"[Local LLM] {exp}"
@@ -306,17 +332,22 @@ class AIRouter:
 
         # 3. Tier 3: Cascade through cloud providers (with multi-key rotation & circuit breaker)
         cascade = self._build_cascade()
+        configured_cascade = [
+            p_name for p_name in cascade
+            if self.providers.get(p_name) and self.providers[p_name].is_configured()
+        ]
+        if not configured_cascade:
+            return None
 
-        for provider_name in cascade:
-            provider = self.providers.get(provider_name)
-            if not provider or not provider.is_configured():
-                continue
-
-            result = self._try_provider(provider, provider_name, safe_cmd)
-            if result is not None:
-                fixed, conf, label = result
-                AICache.put(cache_key, fixed, label, conf)
-                return fixed, conf, label
+        with StatusSpinner(f"⚡ Consulting AI ({configured_cascade[0].capitalize()})...") as spinner:
+            for provider_name in configured_cascade:
+                provider = self.providers[provider_name]
+                spinner.update(f"⚡ Consulting AI ({provider_name.capitalize()})...")
+                result = self._try_provider(provider, provider_name, safe_cmd)
+                if result is not None:
+                    fixed, conf, label = result
+                    AICache.put(cache_key, fixed, label, conf)
+                    return fixed, conf, label
 
         return None
 

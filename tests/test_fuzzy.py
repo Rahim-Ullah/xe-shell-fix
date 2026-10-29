@@ -102,6 +102,15 @@ class TestFuzzyMatcher(unittest.TestCase):
                 self.assertIsNotNone(res)
                 self.assertEqual(res[0], expected)
 
+    def test_cooccurring_tool_and_subcommand_high_confidence(self):
+        """Double typo like 'piiip installl' must resolve with >=0.85 confidence so it never waits on cloud AI."""
+        cmd = Command(raw="piiip installl", shell="bash")
+        res = fuzzy_match_command(cmd)
+        self.assertIsNotNone(res)
+        fixed, conf, exp = res
+        self.assertEqual(fixed, "pip install")
+        self.assertGreaterEqual(conf, 0.85)
+
 
 if __name__ == "__main__":
     unittest.main()

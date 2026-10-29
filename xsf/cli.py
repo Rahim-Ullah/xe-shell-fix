@@ -21,6 +21,7 @@ from xsf.hooks import get_hook_script, SUPPORTED_SHELLS
 from xsf.ui.config_tui import (
     handle_key_cli,
     handle_power_cli,
+    print_commands_reference,
     print_status,
     run_interactive_tui,
     run_setup_wizard,
@@ -34,9 +35,12 @@ def main() -> int:
     if len(argv) == 1 and argv[0] in ("-v", "--version"):
         print(f"xsf {__version__}")
         return 0
+    if len(argv) == 1 and argv[0] in ("--commands",):
+        print_commands_reference()
+        return 0
 
     # Dedicated subcommands
-    if argv and argv[0] in ("init", "config", "ui", "setup", "power", "key", "keys"):
+    if argv and argv[0] in ("init", "config", "ui", "setup", "power", "key", "keys", "commands", "help"):
         sub = argv[0]
         if sub == "init":
             if len(argv) < 2 or argv[1] not in SUPPORTED_SHELLS:
@@ -50,6 +54,10 @@ def main() -> int:
             except Exception as e:
                 sys.stderr.write(f"xsf: {e}\n")
                 return 1
+
+        elif sub in ("commands", "help"):
+            print_commands_reference()
+            return 0
 
         elif sub == "setup":
             return run_setup_wizard()
@@ -71,22 +79,37 @@ def main() -> int:
     # Repair command parsing
     parser = argparse.ArgumentParser(
         prog="xsf",
-        description="xe-shell-fix (xsf): Universal, resilient shell command auto-repair assistant.",
+        description="xe-shell-fix (xsf): Universal, resilient shell command auto-repair & AI terminal assistant.",
     )
-    parser.add_argument("command", nargs="?", default="", help="The failed command string to diagnose and fix")
+    parser.add_argument("command", nargs="*", default=[], help="The failed command string to fix, or a direct AI question/task when used with --ai")
     parser.add_argument("--shell", choices=["powershell", "pwsh", "bash", "gitbash", "zsh", "fish"], default="bash", help="Calling shell dialect")
     parser.add_argument("--stderr-file", default=None, help="Path to captured stderr text from controlled rerun")
     parser.add_argument("--offline", action="store_true", help="Force offline heuristics and rule plugins only")
-    parser.add_argument("--ai", action="store_true", help="Query AI providers directly without offline rules")
+    parser.add_argument("--ai", action="store_true", help="Query AI providers directly (fixes last command or answers direct prompt)")
     parser.add_argument("--auto", action="store_true", help="Auto-approve safe high-confidence fixes")
     parser.add_argument("--dry-run", action="store_true", help="Diagnose and print suggestion without execution")
     parser.add_argument("--no-cache", action="store_true", help="Bypass local AI query cache")
 
     args = parser.parse_args(argv)
 
-    raw_cmd = (args.command or "").strip()
+    if isinstance(args.command, list):
+        raw_cmd = " ".join(args.command).strip()
+    else:
+        raw_cmd = (args.command or "").strip()
+
     if not raw_cmd:
-        sys.stderr.write("xsf: no command provided to fix. Run 'xsf setup', 'xsf config', or 'xsf --help'.\n")
+        if args.ai:
+            sys.stderr.write(
+                "xsf: no previous failed command found, and no query argument was passed to `--ai`.\n"
+                "  \033[1;36m💡 How to use `xsf --ai`:\033[0m\n"
+                "     1. Run \033[1mxsf --ai\033[0m right after a failed command to diagnose it with AI.\n"
+                "     2. Or pass a question, command, or task directly:\n"
+                "        \033[32mxsf --ai \"what is the cd command\"\033[0m\n"
+                "        \033[32mxsf --ai \"find all files larger than 50MB\"\033[0m\n"
+                "        \033[32mxsf --ai \"whoami\"\033[0m\n"
+            )
+            return 1
+        sys.stderr.write("xsf: no command provided to fix. Run 'xsf commands', 'xsf setup', or 'xsf config'.\n")
         return 1
 
     stderr_content = ""

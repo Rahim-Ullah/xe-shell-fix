@@ -11,6 +11,7 @@ Handles:
 import difflib
 import json
 from pathlib import Path
+import re
 from typing import Optional, Tuple
 
 from xsf.core.command import Command
@@ -91,6 +92,11 @@ def fuzzy_match_command(cmd: Command) -> Optional[Tuple[str, float, str]]:
             prog_key = match[0]
             changed = True
             confidence = difflib.SequenceMatcher(None, prog.lower(), match[0]).ratio()
+            # Boost confidence if typo is a simple repeated-key bounce (e.g. 'piiip' -> 'pip', 'giit' -> 'git')
+            dedup_prog = re.sub(r"(.)\1+", r"\1", prog.lower())
+            dedup_target = re.sub(r"(.)\1+", r"\1", match[0].lower())
+            if dedup_prog == dedup_target:
+                confidence = max(confidence, 0.88)
             notes.append(f"'{prog}' → '{match[0]}'")
 
     # 3. Compound command detection: e.g. "docker compose" -> subcommands in "docker-compose"
@@ -118,19 +124,27 @@ def fuzzy_match_command(cmd: Command) -> Optional[Tuple[str, float, str]]:
     if active_vocab_key in VOCAB and subcommand_idx != -1 and subcommand_idx < len(tokens):
         subs = VOCAB[active_vocab_key].get("subcommands", [])
         sub = tokens[subcommand_idx]
-        if (
+        subs_lower = [s.lower() for s in subs]
+        if sub.lower() in subs_lower and changed:
+            # Valid subcommand confirms fuzzy program match (e.g. 'piiip install' -> 'pip install')
+            confidence = max(confidence, 0.88)
+        elif (
             subs
             and sub not in subs
             and sub.lower() not in KNOWN_SAFE_COMMANDS
             and not sub.startswith("-")
         ):
-            match = difflib.get_close_matches(sub.lower(), [s.lower() for s in subs], n=1, cutoff=0.62)
+            match = difflib.get_close_matches(sub.lower(), subs_lower, n=1, cutoff=0.62)
             if match:
                 correct_sub = next((s for s in subs if s.lower() == match[0]), match[0])
                 fixed[subcommand_idx] = correct_sub
                 changed = True
                 sub_conf = difflib.SequenceMatcher(None, sub.lower(), match[0]).ratio()
-                confidence = min(confidence, sub_conf)
+                if sub_conf >= 0.75 and confidence >= 0.72:
+                    # Co-occurring tool + subcommand match (e.g. 'piiip installl' -> 'pip install')
+                    confidence = max(min(confidence, sub_conf), 0.88)
+                else:
+                    confidence = min(confidence, sub_conf)
                 notes.append(f"'{sub}' → '{correct_sub}'")
 
     # 5. Correct single-dash vs double-dash long flag slips

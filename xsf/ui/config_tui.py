@@ -87,6 +87,51 @@ def print_status(cfg: Dict[str, Any]) -> None:
     print("\033[1;36m======================================================\033[0m\n")
 
 
+def print_commands_reference() -> None:
+    """Prints the complete cheat sheet of all xsf commands, flags, aliases, and subcommands."""
+    print("\n\033[1;36m╔══════════════════════════════════════════════════════════════════════════╗\033[0m")
+    print("\033[1;36m║                xe-shell-fix (xsf) — Complete Command Reference           ║\033[0m")
+    print("\033[1;36m╚══════════════════════════════════════════════════════════════════════════╝\033[0m")
+
+    print("\n\033[1;32m1. Automatic & Quick Repair Triggers (Run after any failed command)\033[0m")
+    print("   \033[1mxsf\033[0m                      Diagnose & fix the previous failed command")
+    print("   \033[1mxefix\033[0m / \033[1mxeeee\033[0m / \033[1mfuxx\033[0m     Fast ergonomic aliases for `xsf`")
+
+    print("\n\033[1;32m2. Direct Command Repair & AI Terminal Assistant\033[0m")
+    print("   \033[1mxsf \"<broken_cmd>\"\033[0m       Fix a specific command string directly")
+    print("   \033[1mxsf --ai\033[0m                 Force Cloud/Local AI on the last failed command")
+    print("   \033[1mxsf --ai \"<question>\"\033[0m    Ask AI a terminal question, explain a command, or generate")
+    print("                            a command from plain English (e.g. `xsf --ai \"what is cd\"`)")
+    print("   \033[1mxsf --offline \"<cmd>\"\033[0m    Force 100% offline heuristics (<5ms, zero network)")
+    print("   \033[1mxsf --auto \"<cmd>\"\033[0m       Auto-execute safe high-confidence fixes without prompting")
+    print("   \033[1mxsf --dry-run \"<cmd>\"\033[0m    Preview the suggested fix without executing it")
+    print("   \033[1mxsf --no-cache \"<cmd>\"\033[0m   Bypass the 7-day local AI query cache")
+
+    print("\n\033[1;32m3. Engine Power Switch (`xsf power`)\033[0m")
+    print("   \033[1mxsf power status\033[0m         Show active Power Mode, masked keys, and live health")
+    print("   \033[1mxsf power hybrid\033[0m         Default: Instant Offline (<5ms) -> Cloud AI fallback")
+    print("   \033[1mxsf power offline\033[0m        100% Offline heuristics only (saves 100% API quota)")
+    print("   \033[1mxsf power ai\033[0m             Force direct AI diagnosis for all commands")
+    print("   \033[1mxsf power off\033[0m            Pause the xsf engine completely")
+    print("   \033[1mxsf power reset\033[0m          Clear all provider rate-limit (429/402/504) cooldowns")
+
+    print("\n\033[1;32m4. API Key & Account Manager (`xsf key`)\033[0m")
+    print("   \033[1mxsf key list\033[0m             List configured provider keys and verification health")
+    print("   \033[1mxsf key set <p> <key>\033[0m    Attach/switch key for <groq|gemini|openrouter|cerebras|grok|openai>")
+    print("                            (Tip: pass `--test` to verify live, or comma-separate backup keys)")
+    print("   \033[1mxsf key remove <p>\033[0m       Remove the stored API key for provider <p>")
+    print("   \033[1mxsf key test\033[0m             Run live connectivity & auth check on all configured keys")
+    print("   \033[1mxsf key guide\033[0m            Show step-by-step free API key URLs and prefix formats")
+
+    print("\n\033[1;32m5. Setup, Settings & Shell Integration\033[0m")
+    print("   \033[1mxsf setup\033[0m                Launch interactive onboarding wizard (Mode + Keys + Hook)")
+    print("   \033[1mxsf config\033[0m               Open interactive Settings & Key Control Center TUI")
+    print("   \033[1mxsf config --list\033[0m        Print current configuration summary non-interactively")
+    print("   \033[1mxsf commands\033[0m             Display this complete command cheat sheet")
+    print("   \033[1mxsf init <shell>\033[0m         Output hook script for <bash|zsh|fish|powershell|pwsh|gitbash>")
+    print("   \033[1mxsf --version\033[0m            Print installed xsf version\n")
+
+
 def print_key_guides() -> None:
     print("\n\033[1;36m=== Step-by-Step Free API Key Setup Guide ===\033[0m")
     print("  Attach your own personal keys so your quota is 100% yours (detailed docs in `guides/`):\n")
@@ -124,6 +169,7 @@ def test_connections(cfg: Dict[str, Any]) -> None:
     ai = cfg.get("ai", {})
     local = cfg.get("local_llm", {})
     from xsf.core.command import Command
+    from xsf.ui.spinner import StatusSpinner, flush_stdin
     dummy_cmd = Command(raw="gti status")
     any_tested = False
 
@@ -133,14 +179,16 @@ def test_connections(cfg: Dict[str, Any]) -> None:
         if not keys:
             continue
         any_tested = True
-        print(f"  - {meta['title']} ({len(keys)} key(s)): ", end="", flush=True)
         prov = _build_provider_instance(prov_id, raw_k, ai)
         try:
-            prov.fix(dummy_cmd)
+            with StatusSpinner(f"Testing {meta['title']} ({len(keys)} key(s))..."):
+                prov.fix(dummy_cmd)
             ProviderHealthTracker.record_success(prov_id, keys[0])
-            print("\033[32m✓ Connected & Verified\033[0m")
+            print(f"  - {meta['title']} ({len(keys)} key(s)): \033[32m✓ Connected & Verified\033[0m")
         except Exception as e:
-            print(f"\033[31m✗ Failed ({e})\033[0m")
+            code = getattr(e, "status_code", 0) or (401 if "401" in str(e) or "403" in str(e) or "invalid" in str(e).lower() else 504 if "timed out" in str(e).lower() else 503)
+            ProviderHealthTracker.record_failure(prov_id, keys[0], code, str(e))
+            print(f"  - {meta['title']} ({len(keys)} key(s)): \033[31m✗ Failed ({e})\033[0m")
 
     if local.get("enabled"):
         any_tested = True
@@ -151,6 +199,7 @@ def test_connections(cfg: Dict[str, Any]) -> None:
         else:
             print("\033[31m✗ Ollama daemon not reachable\033[0m")
 
+    flush_stdin()
     if not any_tested:
         print("  \033[90mNo AI keys configured yet. Run `xsf setup` or `xsf key set <provider> <key>`.\033[0m")
 
@@ -405,6 +454,7 @@ def run_interactive_tui() -> None:
         print("  [8] Toggle Auto-Approve for Safe Commands")
         print("  [9] Test All Configured Keys & Connections")
         print("  [R] Reset Rate-Limit Cooldowns / Circuit Breakers")
+        print("  [C] View All xsf Commands & Cheat Sheet (`xsf commands`)")
         print("  [G] View Step-by-Step Free API Key Setup Guide")
         print("  [W] Run Full Guided Setup Wizard (`xsf setup`)")
         print("  [S] Save and Exit")
@@ -412,7 +462,7 @@ def run_interactive_tui() -> None:
         print()
 
         try:
-            choice = input("\033[1mEnter choice [P, 1-9, R, G, W, S, Q]: \033[0m").strip().lower()
+            choice = input("\033[1mEnter choice [P, 1-9, R, C, G, W, S, Q]: \033[0m").strip().lower()
         except (EOFError, KeyboardInterrupt):
             print()
             break
@@ -462,6 +512,12 @@ def run_interactive_tui() -> None:
         elif choice == "r":
             ProviderHealthTracker.reset()
             print("  \033[32m✓ Reset all provider rate-limit cooldowns.\033[0m")
+        elif choice == "c":
+            print_commands_reference()
+            try:
+                input("Press Enter to continue...")
+            except (EOFError, KeyboardInterrupt):
+                break
         elif choice == "g":
             print_key_guides()
             try:
