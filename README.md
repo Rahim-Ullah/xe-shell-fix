@@ -15,10 +15,10 @@
 </p>
 
 <p align="center">
-  <a href="HOWTOUSE.md"><b>📖 User & Ubuntu/Windows Installation Guide (HOWTOUSE.md)</b></a> •
+  <a href="install_guides/README.md"><b>📦 OS Installation Guides (Linux/Ubuntu, Windows, macOS)</b></a> •
   <a href="guides/README.md"><b>🔑 API Key & Power Switch Guides (guides/)</b></a> •
-  <a href="CONTRIBUTING.md"><b>🤝 Contributing & Plugin Guide</b></a> •
-  <a href="CHANGELOG.md"><b>📝 Release Notes</b></a>
+  <a href="HOWTOUSE.md"><b>📖 Complete User Handbook (HOWTOUSE.md)</b></a> •
+  <a href="CONTRIBUTING.md"><b>🤝 Contributing</b></a>
 </p>
 
 ---
@@ -199,6 +199,7 @@ xe-shell-fix/
 ├── README.md                          # Technical architecture & engine documentation
 ├── HOWTOUSE.md                        # Complete step-by-step user & operator guide
 ├── FUTURE_FEATURES.md                 # Architectural roadmap & upcoming feature blueprints
+├── install_guides/                    # Dedicated OS installation & error-troubleshooting guides
 ├── guides/                            # Step-by-step BYOK API key & Power Switch guides
 ├── CONTRIBUTING.md                    # Developer guide & offline rule plugin tutorial
 ├── CHANGELOG.md                       # Version changelog

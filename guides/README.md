@@ -2,6 +2,9 @@
 
 Every user of `xe-shell-fix` (`xsf`) connects **their own personal API keys** (Bring-Your-Own-Key). Your keys are stored locally on your machine at `~/.shellfix/config.toml` with strict owner-only permissions (`0600` on Linux/macOS, exclusive user ACL on Windows) and are never shared.
 
+> 📦 **Need to install `xsf` or fix an OS installation error (like Ubuntu's `externally-managed-environment`)?**
+> See the dedicated **[OS Installation & Troubleshooting Guides (`install_guides/`)](../install_guides/README.md)**.
+
 ---
 
 ## 📚 Step-by-Step Guides Index

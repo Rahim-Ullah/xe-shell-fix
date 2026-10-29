@@ -307,18 +307,19 @@ def _install_shell_hook_interactive() -> None:
         return
 
     home = Path.home()
+    py_exe = sys.executable.replace("\\", "/")
     if default_shell == "zsh":
         rc_path = home / ".zshrc"
-        hook_line = 'eval "$(python3 -m xsf.cli init zsh 2>/dev/null || command xsf init zsh)"'
+        hook_line = f'eval "$(\\"{py_exe}\\" -m xsf.cli init zsh 2>/dev/null || python3 -m xsf.cli init zsh 2>/dev/null || command xsf init zsh)"'
     elif default_shell == "fish":
         rc_path = home / ".config" / "fish" / "config.fish"
-        hook_line = "xsf init fish | source"
+        hook_line = f'"{py_exe}" -m xsf.cli init fish | source'
     elif default_shell == "powershell":
         rc_path = home / "Documents" / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
-        hook_line = 'try { (& (Get-Command -CommandType Application xsf -ErrorAction Stop | Select-Object -First 1) init powershell | Out-String) | Invoke-Expression } catch { (& python -m xsf.cli init powershell | Out-String) | Invoke-Expression }'
+        hook_line = f'try {{ (& "{py_exe}" -m xsf.cli init powershell | Out-String) | Invoke-Expression }} catch {{ try {{ (& (Get-Command -CommandType Application xsf -ErrorAction Stop | Select-Object -First 1) init powershell | Out-String) | Invoke-Expression }} catch {{ (& python -m xsf.cli init powershell | Out-String) | Invoke-Expression }} }}'
     else:
         rc_path = home / ".bashrc"
-        hook_line = 'eval "$(python3 -m xsf.cli init bash 2>/dev/null || command xsf init bash)"'
+        hook_line = f'eval "$(\\"{py_exe}\\" -m xsf.cli init bash 2>/dev/null || python3 -m xsf.cli init bash 2>/dev/null || command xsf init bash)"'
 
     try:
         rc_path.parent.mkdir(parents=True, exist_ok=True)

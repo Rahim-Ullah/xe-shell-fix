@@ -61,42 +61,30 @@ cd xe-shell-fix
 
 ---
 
-## 3. Installation Walkthrough (Ubuntu / Linux, macOS & Windows)
+## 3. Installation Walkthrough & OS Guides
 
-### 🐧 Method A: Ubuntu / Debian / Linux (Recommended — Isolated Virtual Environment)
-Modern Ubuntu (23.04 / 24.04+) enforces PEP 668 externally-managed environments. Installing into a dedicated `.venv` and running `xsf setup` takes 30 seconds:
+For full step-by-step installation and OS-specific error troubleshooting (including Ubuntu PEP 668 `externally-managed-environment`, missing `-e .` arguments, and PowerShell `ExecutionPolicy`), pick your operating system in **[`install_guides/`](install_guides/README.md)**:
 
+* **[🐧 01 — Linux & Ubuntu Installation & Troubleshooting Guide](install_guides/01-LINUX-UBUNTU-DEBIAN.md)**
+* **[🪟 02 — Windows (PowerShell & Git Bash) Installation Guide](install_guides/02-WINDOWS-POWERSHELL-GITBASH.md)**
+* **[🍎 03 — macOS (Zsh & Fish) Installation Guide](install_guides/03-MACOS-ZSH-FISH.md)**
+
+### Quick 30-Second Install (All OSes via Virtual Environment)
 ```bash
-# 1. Clone the repository
-mkdir -p ~/tools && cd ~/tools
-git clone https://github.com/rahim-ullah/xe-shell-fix.git
-cd xe-shell-fix
+# 1. Create & activate virtual environment
+python3 -m venv venv
+source venv/bin/activate        # On Windows PowerShell: .\venv\Scripts\Activate.ps1
 
-# 2. Create a virtual environment & install xsf
-python3 -m venv .venv
-source .venv/bin/activate
+# 2. Install xsf in editable mode (don't forget the trailing dot!)
 pip install -e .
 
-# 3. Launch the interactive Setup Wizard (attaches your keys & installs the Bash/Zsh hook!)
-xsf setup
-```
-
-> [!TIP]
-> Because `xsf init` pins the exact `.venv` Python interpreter inside your `~/.bashrc` / `~/.zshrc` hook (`_XSF_INIT_PYTHON`), **`xsf` will continue to work in every new terminal window even when `.venv` is not activated!**
-
-### 🪟 Method B: Windows / Editable Install
-```powershell
-git clone https://github.com/rahim-ullah/xe-shell-fix.git
-cd xe-shell-fix
-pip install -e .
+# 3. Launch the interactive Setup Wizard (attaches your keys & auto-installs the shell hook!)
 xsf setup
 ```
 
 ### Verifying the Installation
 ```bash
 xsf --version
-# Output: xsf 1.2.0
-
 xsf power status
 ```
 
