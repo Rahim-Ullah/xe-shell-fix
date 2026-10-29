@@ -188,14 +188,22 @@ When a suggestion is displayed, you have 4 interactive options:
 * **`[e]`** — Display a concise explanation of what went wrong and why the fix works.
 * **`[n]` or `Ctrl+C`** — Cancel and discard the suggestion.
 
-### C. Manual CLI Invocations
-You can also run `xsf` directly on any arbitrary command string:
+### C. Manual CLI Invocations & Direct AI Terminal Assistant
+You can run `xsf` directly on any broken command string, or pass a question/task directly to `--ai`:
 ```bash
+# View complete command reference cheat sheet
+xsf commands
+
 # Standard diagnosis and repair
 xsf "git brnch -a"
 
-# Force Cloud AI reasoning (skips offline rules)
-xsf --ai "python -m venv myenv && source myenv/bin/activate"
+# Force Cloud AI on the previous failed command
+xsf --ai
+
+# Direct AI Terminal Assistant (ask a question, explain a command, or generate a command from English!)
+xsf --ai "what is the cd command"
+xsf --ai "find all files larger than 50MB"
+xsf --ai "whoami"
 
 # Pure offline mode (zero network calls, 100% private)
 xsf --offline "doker ps -a"

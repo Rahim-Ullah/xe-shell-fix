@@ -4,7 +4,8 @@
 
 * **Cost**: 100% Free tier in Google AI Studio (no billing required for free tier)
 * **Allowance**: **1,500 requests/day**, **15 requests/minute**, **1M tokens/minute**
-* **Default Model**: `gemini-flash-latest` (automatic fallback across `gemini-3.6-flash` and `gemini-flash-lite-latest`)
+* **Supported Key Formats**: Both Google AI Studio keys (`AIza...`) and Google Cloud / Vertex AI Express keys (`AQ....`)
+* **Default Model**: `gemini-flash-latest` (automatic fallback across `gemini-2.5-flash`, `gemini-2.0-flash`, and `gemini-flash-lite-latest`)
 
 ---
 

@@ -206,14 +206,14 @@ xe-shell-fix/
 ├── pyproject.toml                     # PEP 621 build configuration & console entrypoints
 ├── xsf/
 │   ├── __init__.py                    # Metadata & package version
-│   ├── cli.py                         # CLI entrypoint (xsf, xefix, xeeee, fuxx)
-│   ├── config.py                      # Thread-safe config manager (~/.shellfix/config.toml)
+│   ├── cli.py                         # CLI entrypoint (xsf, xefix, xeeee, fuxx, setup, power, key, commands)
+│   ├── config.py                      # Thread-safe config manager & strict key prefix fingerprinting
 │   ├── core/
 │   │   ├── command.py                 # Multi-dialect command model & quoting rules
 │   │   ├── engine.py                  # Master cascade orchestrator
 │   │   └── safety.py                  # Regex safety gate & destructive denylist
 │   ├── offline/
-│   │   ├── fuzzy.py                   # Normalized Levenshtein typo matcher
+│   │   ├── fuzzy.py                   # Normalized Levenshtein & co-occurrence typo matcher
 │   │   ├── help_parser.py             # Subprocess flag introspector (Argparse/Cobra/POSIX)
 │   │   ├── vocabulary.json            # 90+ CLI tools & subcommand database
 │   │   └── rules/                     # Modular offline rule plugins
@@ -228,10 +228,10 @@ xe-shell-fix/
 │   │       └── ssh_net_rules.py       # SSH host verification, SSL, and network rules
 │   ├── ai/
 │   │   ├── cache.py                   # SHA-256 local disk query cache (7-day TTL)
-│   │   ├── router.py                  # Multi-provider fallback cascade controller
+│   │   ├── router.py                  # Multi-provider fallback cascade & ProviderHealthTracker
 │   │   └── providers/
 │   │       ├── base.py                # Provider ABC & unified system prompt
-│   │       ├── gemini.py              # Google Gemini Free Tier provider
+│   │       ├── gemini.py              # Google Gemini Free Tier & Vertex Express provider
 │   │       ├── groq.py                # Groq LPU ultra-fast inference provider
 │   │       ├── cerebras.py            # Wafer-scale Cerebras provider
 │   │       ├── openrouter.py          # OpenRouter free models provider
@@ -244,9 +244,10 @@ xe-shell-fix/
 │   │   ├── zsh.zsh                    # Zsh preexec/precmd error trap
 │   │   └── fish.fish                  # Fish post-execution event hook
 │   └── ui/
-│       ├── config_tui.py              # Interactive terminal configuration manager
-│       └── selector.py                # Visual diff renderer & action key selector
-└── tests/                             # Comprehensive automated test suite (100 tests)
+│       ├── config_tui.py              # Interactive terminal configuration & command reference manager
+│       ├── selector.py                # Visual diff renderer & action key selector
+│       └── spinner.py                 # Non-intrusive TTY braille status loader
+└── tests/                             # Comprehensive automated test suite (146 tests)
 ```
 
 ---

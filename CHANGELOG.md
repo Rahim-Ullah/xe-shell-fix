@@ -17,10 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Live status dashboard (`xsf power status`) and one-command circuit-breaker cooldown reset (`xsf power reset`).
 - **Guided Post-Install Setup Wizard (`xsf setup`)**:
   - Interactive 3-step onboarding flow configuring Power Mode, personal API keys with live connectivity verification, and automatic shell profile hook installation (`~/.bashrc`, `~/.zshrc`, `config.fish`, PowerShell `$PROFILE`).
-- **Robust Key & Account Manager (`xsf key`)**:
-  - Direct CLI key management (`xsf key set <provider> <key> [--test]`, `xsf key remove <provider>`, `xsf key list`, `xsf key guide`).
-  - Automatic key sanitization (strips accidental surrounding quotes, whitespace, and `Bearer ` prefixes) and provider-specific format validation.
+- **Robust Key & Account Manager (`xsf key`) & Cross-Provider Prefix Guard**:
+  - Direct CLI key management (`xsf key set <provider> <key> [--test]`, `xsf key remove <provider>`, `xsf key list`, `xsf key guide`, `xsf key test`).
+  - Automatic key sanitization (strips accidental surrounding quotes, whitespace, and `Bearer ` prefixes) and strict cross-provider prefix fingerprinting (`gsk_`, `AIza`/`AQ.`, `sk-or-`, `csk-`, `xai-`, `sk-`) that rejects keys pasted into the wrong provider slot.
   - **Multi-Account Backup Key Rotation**: Attach comma-separated keys per provider (`xsf key set groq "key1,key2"`) for automatic failover on rate limits.
+- **Direct AI Terminal Assistant (`xsf --ai "<prompt>"`) & Command Reference (`xsf commands`)**:
+  - `xsf --ai` repairs the previous failed command when invoked without arguments, or answers direct terminal questions/tasks (`xsf --ai "what is cd"`, `xsf --ai "whoami"`) when passed an argument.
+  - Added `xsf commands` CLI cheat sheet and `[C]` option inside `xsf config`.
+  - Added non-intrusive TTY braille loader (`xsf/ui/spinner.py`) during live AI calls and connection tests.
+  - Added dedicated OS installation and troubleshooting guides in `install_guides/`.
 - **Persistent Circuit-Breaker & Rate-Limit Guard (`ProviderHealthTracker`)**:
   - Tracks per-key health in `~/.shellfix/provider_health.json` (with `0600` permissions), placing rate-limited (`429`), quota-exhausted (`402`), or unauthorized (`401`/`403`) keys into timed cooldowns so terminal commands never lag on throttled endpoints.
   - Quiet failover mode suppresses noisy transient error walls during provider cascades.
