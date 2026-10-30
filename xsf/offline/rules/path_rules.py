@@ -82,25 +82,6 @@ def resolve_path_typo(raw_path: str, cwd: Optional[str] = None) -> Optional[str]
 
     base_dir = Path(cwd) if cwd else Path.cwd()
 
-    # If it already exists on disk, check if casing matches exactly
-    try:
-        p = Path(clean) if is_absolute else (base_dir / clean)
-        if p.exists():
-            if os.name == "nt":
-                # On Windows, p.exists() is True even if casing differs.
-                # Check if disk casing actually matches the requested casing.
-                try:
-                    real_path = p.resolve()
-                    real_parts = real_path.parts[-len(parts):]
-                    if tuple(parts) == tuple(real_parts):
-                        return None
-                except Exception:
-                    return None
-            else:
-                return None
-    except Exception:
-        pass
-
     # Determine starting root
     if is_absolute:
         curr = Path("/")
