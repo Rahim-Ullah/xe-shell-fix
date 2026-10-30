@@ -299,7 +299,18 @@ class Engine:
             sys.stderr.write("\n")
             badge = "\033[1;32m[OFFLINE]\033[0m" if source == "offline" else "\033[1;36m[AI]\033[0m"
             sys.stderr.write(f"  {badge} \033[1m{safe_cmd}\033[0m\n")
-            if safe_exp:
+            if safe_exp and "\n" in safe_exp:
+                # Question mode: show the full AI answer as an indented block under the runnable example
+                head, _, body = safe_exp.partition("\n")
+                try:
+                    sys.stderr.write(f"  \033[90m\u2514\u2500\033[0m {head}\n")
+                except UnicodeEncodeError:
+                    sys.stderr.write(f"  \\-- {head}\n")
+                for line in body.splitlines():
+                    if line.strip():
+                        sys.stderr.write(f"     {line.rstrip()}\n")
+                sys.stderr.write(f"  \033[90m(confidence: {int(confidence * 100)}%)\033[0m\n")
+            elif safe_exp:
                 try:
                     sys.stderr.write(f"  \033[90m\u2514\u2500 {safe_exp} (confidence: {int(confidence * 100)}%)\033[0m\n")
                 except UnicodeEncodeError:

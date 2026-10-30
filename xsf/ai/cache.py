@@ -14,7 +14,8 @@ def make_key(raw_command: str, stderr_text: str, shell: str) -> str:
     """Generates a SHA256 cache key from command, normalized stderr, and shell."""
     # First 500 chars of stderr is usually sufficient for context identification
     norm_err = (stderr_text or "").strip()[:500]
-    payload = f"{shell}|{raw_command.strip()}|{norm_err}".encode("utf-8")
+    # "v2" = prompt schema version; bump when SYSTEM_PROMPT output changes so stale answers aren't served
+    payload = f"v2|{shell}|{raw_command.strip()}|{norm_err}".encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
 

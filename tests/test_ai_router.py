@@ -189,6 +189,21 @@ class TestAIProviderBase(unittest.TestCase):
         self.assertAlmostEqual(conf, 0.5)
         self.assertFalse(dest)
 
+    def test_parse_question_answer_overrides_summary(self):
+        from xsf.ai.providers.base import BaseProvider
+        raw = ('{"fixed_command": "cd ~/Downloads", "explanation": "Changes directory", "confidence": 0.95, '
+               '"destructive": false, "answer": "cd changes the current directory.\\ncd ..  - go up one level"}')
+        cmd, exp, conf, dest = BaseProvider.parse_json_response(raw)
+        self.assertEqual(cmd, "cd ~/Downloads")
+        self.assertIn("cd ..  - go up one level", exp)
+        self.assertEqual(exp.splitlines()[0], "cd changes the current directory.")
+
+    def test_parse_empty_answer_keeps_explanation(self):
+        from xsf.ai.providers.base import BaseProvider
+        raw = '{"fixed_command": "git status", "explanation": "Fixed typo", "confidence": 0.9, "answer": ""}'
+        _, exp, _, _ = BaseProvider.parse_json_response(raw)
+        self.assertEqual(exp, "Fixed typo")
+
     def test_redact_sensitive_data(self):
         from xsf.ai.router import redact_sensitive_data
         sample_bearer = "curl -H 'Authorization: Bearer abcdef1234567890xyz' https://api.com"
