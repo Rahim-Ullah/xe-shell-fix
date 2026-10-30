@@ -383,6 +383,22 @@ def _install_shell_hook_interactive() -> None:
     except Exception as e:
         print(f"  \033[33mCould not auto-update {rc_path} ({e}). Add manually: {hook_line}\033[0m")
 
+    # Ensure binary symlinks in ~/.local/bin if available on POSIX
+    if os.name != "nt":
+        local_bin = home / ".local" / "bin"
+        try:
+            if local_bin.exists() or (home / ".local").exists():
+                local_bin.mkdir(parents=True, exist_ok=True)
+                bin_dir = Path(sys.executable).parent
+                for alias in ("xsf", "xefix", "xeeee", "fuxx"):
+                    src = bin_dir / alias
+                    dst = local_bin / alias
+                    if src.exists() and (not dst.exists() or dst.is_symlink()):
+                        dst.unlink(missing_ok=True)
+                        dst.symlink_to(src)
+        except OSError:
+            pass
+
 
 def run_setup_wizard() -> int:
     """
