@@ -5,7 +5,6 @@ Ensures all hook files exist, are non-empty, and contain critical patterns
 like alias definitions, subcommand delegation, and history-skip logic.
 """
 import unittest
-from pathlib import Path
 
 from xsf.hooks import HOOKS_DIR, SUPPORTED_SHELLS, get_hook_script
 

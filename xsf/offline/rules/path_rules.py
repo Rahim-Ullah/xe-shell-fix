@@ -5,7 +5,6 @@ Fixes mistyped filenames and directory paths in commands (cat, ls, vim, python, 
 by checking real filesystem entries in parent directories with difflib and case matching.
 """
 import difflib
-import os
 from pathlib import Path
 from typing import List, Optional, Tuple
 

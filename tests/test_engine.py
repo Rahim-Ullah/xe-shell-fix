@@ -2,7 +2,7 @@
 Tests for xsf.core.engine - Master 3-tier cascade orchestrator.
 """
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from xsf.core.command import Command
 from xsf.core.engine import Engine

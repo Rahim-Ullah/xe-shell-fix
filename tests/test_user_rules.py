@@ -6,8 +6,7 @@ import tempfile
 import unittest
 
 from xsf.core.command import Command
-from xsf.offline.rules.base import Rule
-from xsf.offline.rules.user_rules import load_user_rules, FunctionRuleAdapter
+from xsf.offline.rules.user_rules import load_user_rules
 
 
 class TestUserRulesLoader(unittest.TestCase):

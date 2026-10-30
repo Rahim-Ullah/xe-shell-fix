@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from xsf.core.command import Command
-from xsf.offline.rules.path_rules import FuzzyPathCorrectionRule, resolve_path_typo
+from xsf.offline.rules.path_rules import FuzzyPathCorrectionRule
 from xsf.offline.rules.git_rules import GitBranchFuzzyRule
 
 

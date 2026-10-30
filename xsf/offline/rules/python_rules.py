@@ -2,7 +2,6 @@
 xsf.offline.rules.python_rules - Python, venv, and pip pattern rules.
 """
 from pathlib import Path
-import re
 from typing import Optional, Tuple
 
 from xsf.core.command import Command

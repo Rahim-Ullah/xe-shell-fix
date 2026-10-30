@@ -158,6 +158,11 @@ Run this once from your project folder (replacing the path if you cloned elsewhe
 # Add the hook using your venv's xsf binary (persists across all future terminals!)
 grep -q "xsf init bash" ~/.bashrc || echo 'eval "$('"$PWD"'/venv/bin/xsf init bash)"' >> ~/.bashrc
 source ~/.bashrc
+
+# Make `xsf` a real binary on PATH everywhere (any folder, any shell, no reload needed).
+# `xsf setup` does this automatically; run manually only if you skipped setup:
+mkdir -p ~/.local/bin
+for c in xsf xefix xeeee fuxx; do ln -sf "$PWD/venv/bin/$c" ~/.local/bin/$c; done
 ```
 
 ---

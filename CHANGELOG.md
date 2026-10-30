@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Architectural Roadmap (`FUTURE_FEATURES.md`)**:
   - Added 10 detailed module blueprints for upcoming capabilities.
 
+#### Fixed
+- **`xsf --ai "<question>"` now gives real answers**: questions like `xsf --ai "what is curl command"` return a short multi-line explanation (syntax + key flags) and one practical runnable example, instead of a `--help`/`man` stub. AI cache keys are versioned so stale answers are not reused.
+- **`xsf: command not found` outside the repo**: `xsf setup` now symlinks `xsf`, `xefix`, `xeeee`, `fuxx` into `~/.local/bin` on Linux/macOS, so the command works in every folder and fresh terminal.
+- Removed unused imports flagged by Ruff (no behavior change).
+
 #### Security & Audit Fixes
 - **Chained/Piped Command Inspection in Safety Gate (`safety.py`)**:
   - Split commands across shell operators (`&&`, `||`, `;`, `|`, `&`, `\n`, `$(`, `` ` ``) so `_has_rm_danger()` catches recursive/root deletions anywhere in a command chain (e.g. `cd /tmp && rm -rf /`, `sudo -u root rm -rf /`, `env FOO=bar rm -rf /`, `timeout 5 rm -rf /`).

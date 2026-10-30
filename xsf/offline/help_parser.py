@@ -6,9 +6,7 @@ Tier 1b: When static rules and vocabulary do not match, this module runs `<cmd> 
 (Argparse, Cobra/Go, POSIX/GNU, and token fallback) to correct mistyped flags.
 """
 import difflib
-import hashlib
 import json
-import os
 from pathlib import Path
 import re
 import shutil

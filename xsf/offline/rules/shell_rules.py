@@ -1,7 +1,6 @@
 """
 xsf.offline.rules.shell_rules - Shell execution, permissions, and path separator fixes.
 """
-import os
 from pathlib import Path
 from typing import Optional, Tuple
 
