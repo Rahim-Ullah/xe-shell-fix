@@ -97,6 +97,28 @@ class TestSafetyGuard(unittest.TestCase):
         destructive, _ = SafetyGuard.inspect("rm -rf /")
         self.assertTrue(destructive)
 
+    def test_edit_before_run_safe_command(self):
+        """Pressing 'e' in SafetyGuard.confirm allows inline editing and updates last_approved_command."""
+        from unittest.mock import patch
+        with patch("builtins.input", side_effect=["e", "pip install requests"]), patch("sys.stderr"):
+            approved = SafetyGuard.confirm("pip install")
+        self.assertTrue(approved)
+        self.assertEqual(SafetyGuard.last_approved_command, "pip install requests")
+
+    def test_edit_before_run_rechecks_destructive_gate(self):
+        """If user edits a safe command into a destructive command ('rm -rf /tmp'), SafetyGuard requires 'yes'."""
+        from unittest.mock import patch
+        # User presses 'e', edits to 'rm -rf /tmp', then declines destructive prompt with 'n'
+        with patch("builtins.input", side_effect=["e", "rm -rf /tmp", "n"]), patch("sys.stderr"):
+            approved_declined = SafetyGuard.confirm("ls /tmp")
+        self.assertFalse(approved_declined)
+
+        # User presses 'e', edits to 'rm -rf /tmp', and confirms with full 'yes'
+        with patch("builtins.input", side_effect=["e", "rm -rf /tmp", "yes"]), patch("sys.stderr"):
+            approved_confirmed = SafetyGuard.confirm("ls /tmp")
+        self.assertTrue(approved_confirmed)
+        self.assertEqual(SafetyGuard.last_approved_command, "rm -rf /tmp")
+
 
 if __name__ == "__main__":
     unittest.main()

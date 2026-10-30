@@ -147,8 +147,8 @@ def _render_menu(candidates: List[Candidate], selected_idx: int) -> int:
 
     _safe_write(
         sys.stderr,
-        "\033[90m[Use \u2191/\u2193 to navigate, Enter to run, 1-9 direct, Esc/q to cancel]\033[0m\n",
-        "\033[90m[Use Up/Down to navigate, Enter to run, 1-9 direct, Esc/q to cancel]\033[0m\n",
+        "\033[90m[Use \u2191/\u2193 to navigate, Enter to run, e to edit, 1-9 direct, Esc/q to cancel]\033[0m\n",
+        "\033[90m[Use Up/Down to navigate, Enter to run, e to edit, 1-9 direct, Esc/q to cancel]\033[0m\n",
     )
     lines_count += 1
     sys.stderr.flush()
@@ -194,6 +194,12 @@ def choose_candidate(
             choice = sys.stdin.readline().strip().lower()
             if not choice or choice == "1" or choice == "y":
                 return candidates[0]
+            if choice in ("e", "edit"):
+                from xsf.core.safety import prompt_edit_command
+                edited = prompt_edit_command(candidates[0][0])
+                if not edited:
+                    return None
+                return (edited, candidates[0][1], candidates[0][2], candidates[0][3])
             if choice in ("n", "q", "no", "cancel"):
                 return None
             idx = int(choice) - 1
@@ -213,6 +219,14 @@ def choose_candidate(
         if key == "ENTER":
             _clear_menu(lines_printed)
             return candidates[idx]
+        elif key in ("e", "E"):
+            _clear_menu(lines_printed)
+            from xsf.core.safety import prompt_edit_command
+            sel = candidates[idx]
+            edited = prompt_edit_command(sel[0])
+            if not edited:
+                return None
+            return (edited, sel[1], sel[2], sel[3])
         elif key == "CANCEL":
             _clear_menu(lines_printed)
             return None

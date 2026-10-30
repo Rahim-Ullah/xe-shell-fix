@@ -5,10 +5,11 @@ CRITICAL INVARIANT:
 Every proposed command from EVERY tier (static rules, dynamic help flag fixes,
 local LLM, or cloud AI) MUST pass through this module before reaching the shell.
 """
+import os
 import re
 import shlex
 import sys
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 _EXEC_WRAPPERS = {
     "sudo", "doas", "env", "command", "nohup", "busybox",
@@ -164,8 +165,55 @@ def is_destructive(cmd: str) -> bool:
     return False
 
 
+def prompt_edit_command(initial_cmd: str) -> Optional[str]:
+    """
+    Opens an inline editable command prompt pre-filled with `initial_cmd`.
+    Uses GNU readline on POSIX or msvcrt keystroke injection on Windows,
+    while redirecting stdout to stderr during input() so stdout (captured for shell eval)
+    remains 100% clean.
+    """
+    clean_initial = _sanitize_display(initial_cmd).strip()
+    orig_stdout = sys.stdout
+    rl_mod = None
+    is_tty = hasattr(sys.stdin, "isatty") and sys.stdin.isatty() and hasattr(sys.stderr, "isatty") and sys.stderr.isatty()
+    try:
+        sys.stdout = sys.stderr
+        if is_tty and os.name != "nt":
+            try:
+                import readline as _rl
+                rl_mod = _rl
+                rl_mod.set_startup_hook(lambda: rl_mod.insert_text(clean_initial))
+            except Exception:
+                rl_mod = None
+                sys.stderr.write(f"  \033[90m(Current: {clean_initial})\033[0m\n")
+        elif is_tty and os.name == "nt":
+            try:
+                import msvcrt
+                for ch in clean_initial:
+                    msvcrt.ungetwch(ch)
+            except Exception:
+                sys.stderr.write(f"  \033[90m(Current: {clean_initial})\033[0m\n")
+
+        sys.stderr.write("  \033[1;36mEdit command:\033[0m ")
+        sys.stderr.flush()
+        edited = input().strip()
+        return edited if edited else None
+    except (EOFError, KeyboardInterrupt):
+        sys.stderr.write("\n")
+        return None
+    finally:
+        if rl_mod is not None:
+            try:
+                rl_mod.set_startup_hook(None)
+            except Exception:
+                pass
+        sys.stdout = orig_stdout
+
+
 class SafetyGuard:
     """Universal gate ensuring no destructive action executes without explicit confirmation."""
+
+    last_approved_command: Optional[str] = None
 
     @staticmethod
     def inspect(cmd: str) -> Tuple[bool, str]:
@@ -179,13 +227,37 @@ class SafetyGuard:
         return False, "Safe"
 
     @staticmethod
+    def _prompt_destructive_yes(reason: str) -> bool:
+        sys.stderr.write("\n")
+        sys.stderr.write("  \033[1;31m[CAUTION: POTENTIALLY DESTRUCTIVE COMMAND]\033[0m\n")
+        sys.stderr.write(f"  {reason}\n")
+        sys.stderr.write("  To approve this command, you must type the full word \033[1m'yes'\033[0m (or \033[1m'e'\033[0m to edit): ")
+        sys.stderr.flush()
+        try:
+            ans = input().strip()
+        except (EOFError, KeyboardInterrupt):
+            sys.stderr.write("\n")
+            return False
+        if ans.lower() in ("e", "edit"):
+            edited = prompt_edit_command(SafetyGuard.last_approved_command or "")
+            if not edited:
+                return False
+            SafetyGuard.last_approved_command = edited
+            d2, r2 = SafetyGuard.inspect(edited)
+            if d2:
+                return SafetyGuard._prompt_destructive_yes(r2)
+            return True
+        return ans.lower() == "yes"
+
+    @staticmethod
     def confirm(cmd: str, auto_approve: bool = False, dry_run: bool = False) -> bool:
         """
-        Prompts user for confirmation.
+        Prompts user for confirmation (or inline editing via 'e').
         - Destructive commands ALWAYS require typing full 'yes'.
-        - Safe commands require pressing Enter or 'y' (or auto-approve if flag is set).
+        - Safe commands accept Enter/y to run, 'e' to edit inline before running, or 'n' to cancel.
         - dry_run only prints and returns False.
         """
+        SafetyGuard.last_approved_command = cmd
         destructive, reason = SafetyGuard.inspect(cmd)
         safe_cmd_display = _sanitize_display(cmd)
 
@@ -199,25 +271,25 @@ class SafetyGuard:
             return True
 
         if destructive:
-            sys.stderr.write("\n")
-            sys.stderr.write("  \033[1;31m[CAUTION: POTENTIALLY DESTRUCTIVE COMMAND]\033[0m\n")
-            sys.stderr.write(f"  {reason}\n")
-            sys.stderr.write("  To approve this command, you must type the full word \033[1m'yes'\033[0m: ")
-            sys.stderr.flush()
-            try:
-                ans = input().strip()
-            except (EOFError, KeyboardInterrupt):
-                sys.stderr.write("\n")
-                return False
-            return ans.lower() == "yes"
+            return SafetyGuard._prompt_destructive_yes(reason)
 
-        # Standard non-destructive prompt
-        sys.stderr.write("\nExecute? [\033[1mEnter\033[0m/y/n]: ")
+        # Standard non-destructive prompt with [e]dit support
+        sys.stderr.write("\nExecute? [\033[1mEnter\033[0m/y/\033[1me\033[0m=edit/n]: ")
         sys.stderr.flush()
         try:
             ans = input().strip()
         except (EOFError, KeyboardInterrupt):
             sys.stderr.write("\n")
             return False
+
+        if ans.lower() in ("e", "edit"):
+            edited = prompt_edit_command(cmd)
+            if not edited:
+                return False
+            SafetyGuard.last_approved_command = edited
+            d2, r2 = SafetyGuard.inspect(edited)
+            if d2:
+                return SafetyGuard._prompt_destructive_yes(r2)
+            return True
 
         return ans == "" or ans.lower().startswith("y")

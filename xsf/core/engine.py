@@ -128,7 +128,10 @@ class Engine:
 
         # 1. AI-Only path (if explicitly requested via --ai or power_mode=ai_only)
         if ai_only:
-            ai_result = self.ai_router.route(cmd, skip_cache=skip_cache)
+            try:
+                ai_result = self.ai_router.route(cmd, skip_cache=skip_cache, force_ai=True)
+            except TypeError:
+                ai_result = self.ai_router.route(cmd, skip_cache=skip_cache)
             if ai_result and ai_result[0] and ai_result[0].strip():
                 fixed, conf, exp = ai_result
                 return [(fixed, conf, exp, "ai")]
@@ -187,7 +190,10 @@ class Engine:
 
         # 1. AI-Only path (if explicitly requested via --ai or power_mode=ai_only)
         if ai_only:
-            ai_result = self.ai_router.route(cmd, skip_cache=skip_cache)
+            try:
+                ai_result = self.ai_router.route(cmd, skip_cache=skip_cache, force_ai=True)
+            except TypeError:
+                ai_result = self.ai_router.route(cmd, skip_cache=skip_cache)
             if ai_result and ai_result[0] and ai_result[0].strip():
                 fixed, conf, exp = ai_result
                 return fixed, conf, exp, "ai"
@@ -268,10 +274,16 @@ class Engine:
 
         if not candidates:
             sys.stderr.write("xsf: no automatic fix found for previous command\n")
-            if offline_only or self.power_mode == "offline":
+            ai_note = getattr(self.ai_router, "last_status_note", "") if self.ai_router else ""
+            attempted_ai = bool(getattr(self.ai_router, "attempted_ai", False)) if self.ai_router else False
+            if ai_note:
+                sys.stderr.write(f"     \033[1;36m[AI Note]\033[0m {ai_note}\n")
+            elif offline_only or self.power_mode == "offline":
                 sys.stderr.write("     [Hint] Offline-Only mode active. Run `xsf power hybrid` or pass `--ai` to enable AI diagnosis.\n")
             elif not self.ai_router or not any(p.is_configured() for p in self.ai_router.providers.values()):
                 sys.stderr.write("     [Hint] No personal AI key attached. Run `xsf setup` or `xsf key guide` to connect free Groq/Gemini keys.\n")
+            elif ai_only or attempted_ai:
+                sys.stderr.write("     [Hint] AI evaluated the command but could not determine a valid shell replacement.\n")
             else:
                 sys.stderr.write("     [Hint] Try `xsf --ai` to query AI providers directly, or `xsf power status` to check key limits.\n")
             return 1
@@ -292,9 +304,12 @@ class Engine:
                     sys.stderr.write(f"  \033[90m\u2514\u2500 {safe_exp} (confidence: {int(confidence * 100)}%)\033[0m\n")
                 except UnicodeEncodeError:
                     sys.stderr.write(f"  \033[90m\\-- {safe_exp} (confidence: {int(confidence * 100)}%)\033[0m\n")
-            # Single candidate: pass through safety gate (Enter/y for safe, full "yes" for destructive)
+            # Single candidate: pass through safety gate (Enter/y for safe, 'e' to edit inline, full "yes" for destructive)
+            SafetyGuard.last_approved_command = fixed_cmd
             auto_flag = auto_approve or (self.auto_approve_safe and confidence >= 0.95)
             approved = SafetyGuard.confirm(fixed_cmd, auto_approve=auto_flag, dry_run=dry_run)
+            if approved and SafetyGuard.last_approved_command:
+                fixed_cmd = SafetyGuard.last_approved_command
         else:
             # Multi-candidate handling:
             # 1. Dry-run never blocks on interactive selection

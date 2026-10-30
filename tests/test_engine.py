@@ -274,6 +274,38 @@ class TestEngineExecuteFlow(unittest.TestCase):
             self.assertEqual(len(cands), 1)
             self.assertEqual(cands[0][0], "whoami")
 
+    def test_cli_intermixed_args_and_bare_shell_flag(self):
+        """`xsf --ai 'pip'` must work even when an older shell hook prepends $last_cmd before --shell."""
+        import io
+        from xsf.cli import main
+
+        with patch("sys.argv", ["xsf", "piiip install", "--shell", "bash", "--ai", "--dry-run", "pip"]), \
+             patch("xsf.core.engine.Engine.execute_flow", return_value=0) as mock_exec:
+            rc = main()
+            self.assertEqual(rc, 0)
+            called_cmd = mock_exec.call_args.kwargs["cmd"]
+            self.assertEqual(called_cmd.raw, "pip")
+
+        # Bare `xsf --shell` should print friendly dialect message instead of argparse crash
+        err_buf = io.StringIO()
+        with patch("sys.argv", ["xsf", "--shell"]), patch("sys.stderr", err_buf):
+            rc_shell = main()
+            self.assertEqual(rc_shell, 1)
+            self.assertIn("active shell dialect", err_buf.getvalue())
+
+    def test_no_circular_try_xsf_ai_hint_when_ai_already_used(self):
+        """When --ai fails or finds no fix, engine must NOT tell user to 'Try xsf --ai' again."""
+        import io
+        err_buf = io.StringIO()
+        self.engine.ai_router.attempted_ai = True
+        self.engine.ai_router.last_status_note = "[Gemini] Invalid range flag 'rm' and host 'asdf' cannot be resolved."
+        with patch.object(self.engine, "find_candidates", return_value=[]), patch("sys.stderr", err_buf):
+            rc = self.engine.execute_flow(Command(raw="curl -f -r rm asdf", shell="bash"), ai_only=True)
+        self.assertEqual(rc, 1)
+        output = err_buf.getvalue()
+        self.assertNotIn("Try `xsf --ai`", output)
+        self.assertIn("[AI Note]", output)
+
 
 if __name__ == "__main__":
     unittest.main()

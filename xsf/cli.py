@@ -76,6 +76,17 @@ def main() -> int:
             run_interactive_tui()
             return 0
 
+    # Friendly handling if user runs `xsf --shell` without specifying a dialect
+    if argv and argv[-1] == "--shell":
+        detected = "bash"
+        if len(argv) >= 3 and argv[-3] == "--shell":
+            detected = argv[-2]
+        sys.stderr.write(
+            f"xsf: active shell dialect is '{detected}'.\n"
+            f"  Usage: xsf --shell <{'|'.join(SUPPORTED_SHELLS)}> \"<command>\"\n"
+        )
+        return 1
+
     # Repair command parsing
     parser = argparse.ArgumentParser(
         prog="xsf",
@@ -90,12 +101,20 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Diagnose and print suggestion without execution")
     parser.add_argument("--no-cache", action="store_true", help="Bypass local AI query cache")
 
-    args = parser.parse_args(argv)
-
-    if isinstance(args.command, list):
-        raw_cmd = " ".join(args.command).strip()
+    # Use parse_intermixed_args so positional arguments before AND after flags (e.g. from older hooks in RAM) never error
+    if hasattr(parser, "parse_intermixed_args"):
+        args = parser.parse_intermixed_args(argv)
     else:
-        raw_cmd = (args.command or "").strip()
+        args = parser.parse_args(argv)
+
+    # If an un-reloaded shell hook prepended $last_cmd BEFORE `--shell <dialect>` while the user also passed
+    # an explicit command/prompt AFTER `--shell <dialect>` (e.g. `xsf --ai "pip"` -> `[last_cmd, "--shell", "bash", "--ai", "pip"]`),
+    # prefer the user's explicit positional argument(s) after `--shell`.
+    cmd_parts = list(args.command) if isinstance(args.command, list) else ([args.command] if args.command else [])
+    if len(cmd_parts) > 1 and len(argv) >= 3 and argv[1] == "--shell" and not argv[0].startswith("-"):
+        cmd_parts = cmd_parts[1:]
+
+    raw_cmd = " ".join(cmd_parts).strip()
 
     if not raw_cmd:
         if args.ai:

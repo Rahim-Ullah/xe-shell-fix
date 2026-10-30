@@ -211,6 +211,8 @@ class AIRouter:
         self.gen_cfg = config.get("general", {})
         self.quiet_failover = bool(self.gen_cfg.get("quiet_failover", True)) and not bool(os.environ.get("XSF_DEBUG"))
         self.providers: Dict[str, BaseProvider] = {}
+        self.last_status_note: str = ""
+        self.attempted_ai: bool = False
         self._init_providers()
 
     def _log_failover(self, msg: str) -> None:
@@ -285,15 +287,18 @@ class AIRouter:
 
         return base
 
-    def route(self, cmd: Command, skip_cache: bool = False) -> Optional[Tuple[str, float, str]]:
+    def route(self, cmd: Command, skip_cache: bool = False, force_ai: bool = False) -> Optional[Tuple[str, float, str]]:
         """
         Routes command repair through the full provider cascade.
         Returns (fixed_command, confidence, explanation) or None if all providers fail.
         """
-        if not self.ai_cfg.get("enabled", True):
-            return None
-        if self.gen_cfg.get("power_mode", "hybrid") in ("offline", "off"):
-            return None
+        self.last_status_note = ""
+        self.attempted_ai = False
+        if not force_ai:
+            if not self.ai_cfg.get("enabled", True):
+                return None
+            if self.gen_cfg.get("power_mode", "hybrid") in ("offline", "off"):
+                return None
 
         # Security: Scrub sensitive credentials before network calls or caching
         safe_raw = redact_sensitive_data(cmd.raw)
@@ -305,6 +310,7 @@ class AIRouter:
         if not skip_cache:
             cached = AICache.get(cache_key)
             if cached and cached.get("command"):
+                self.attempted_ai = True
                 return (
                     cached["command"],
                     float(cached.get("confidence", 0.7)),
@@ -321,12 +327,15 @@ class AIRouter:
             and ollama.is_configured()
             and ollama.is_alive()
         ):
+            self.attempted_ai = True
             try:
                 with StatusSpinner("⚡ Consulting Local Ollama LLM..."):
                     fixed, exp, conf = ollama.fix(safe_cmd)
                 if fixed:
                     AICache.put(cache_key, fixed, exp, conf)
                     return fixed, conf, f"[Local LLM] {exp}"
+                elif exp:
+                    self.last_status_note = f"[Local LLM] {exp}"
             except Exception as e:
                 self._log_failover(f"  (ollama skipped: {e})\n")
 
@@ -339,11 +348,12 @@ class AIRouter:
         if not configured_cascade:
             return None
 
+        self.attempted_ai = True
         with StatusSpinner(f"⚡ Consulting AI ({configured_cascade[0].capitalize()})...") as spinner:
             for provider_name in configured_cascade:
                 provider = self.providers[provider_name]
                 spinner.update(f"⚡ Consulting AI ({provider_name.capitalize()})...")
-                result = self._try_provider(provider, provider_name, safe_cmd)
+                result = self._try_provider(provider, provider_name, safe_cmd, force_ai=force_ai)
                 if result is not None:
                     fixed, conf, label = result
                     AICache.put(cache_key, fixed, label, conf)
@@ -357,6 +367,7 @@ class AIRouter:
         name: str,
         cmd: Command,
         max_retries: int = 1,
+        force_ai: bool = False,
     ) -> Optional[Tuple[str, float, str]]:
         """
         Calls a provider, rotating through backup keys if configured and respecting
@@ -369,7 +380,9 @@ class AIRouter:
             is_real_key = key_candidate != "_default_"
             if is_real_key:
                 cooling, reason = ProviderHealthTracker.is_cooling_down(name, key_candidate)
-                if cooling:
+                # When user explicitly passes `--ai` (force_ai=True), bypass transient timeout/server_busy cooldowns
+                if cooling and not (force_ai and ("timeout" in reason or "server_busy" in reason)):
+                    self.last_status_note = f"{name.capitalize()} key is cooling down ({reason}). Run `xsf power reset` to clear cooldowns."
                     self._log_failover(f"  ({name} key cooling down [{reason}], skipping)\n")
                     continue
                 provider.api_key = key_candidate
@@ -381,12 +394,15 @@ class AIRouter:
                         ProviderHealthTracker.record_success(name, key_candidate)
                     if fixed:
                         return fixed, conf, f"[{name.capitalize()}] {exp}"
+                    if exp:
+                        self.last_status_note = f"[{name.capitalize()}] {exp}"
                     return None
 
                 except ProviderError as e:
                     code = e.status_code
                     if is_real_key and code:
                         ProviderHealthTracker.record_failure(name, key_candidate, code, str(e))
+                    self.last_status_note = f"[{name.capitalize()}] {e}"
 
                     if code in _SKIP_CODES:
                         self._log_failover(f"  ({name} skipped [{code}]: {e})\n")
